@@ -1,0 +1,12 @@
+# Skript 2.66: NEA mit Wort- und ε-Übergängen
+nea N2_66 {
+  alphabet 0 1
+  states 0 1 2 3 4 5
+  start 0
+  accept 2 5
+  0 -ε-> 2
+  0 -ε-> 5
+  2 -01-> 2
+  5 -001-> 5
+  layout 0@0,0 1@420,-90 2@200,-90 3@420,0 4@420,90 5@200,90
+}

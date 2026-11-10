@@ -1,0 +1,266 @@
+/* Schriften: nur lateinische und griechische Teilmengen, damit die Einzeldatei klein bleibt. */
+@font-face {
+  font-family: 'Grotesk';
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Serif';
+  font-style: italic;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-opsz-italic.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Serif';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource-variable/source-serif-4/files/source-serif-4-latin-opsz-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2') format('woff2-variations');
+}
+@font-face {
+  font-family: 'Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  unicode-range: U+0370-03FF;
+  src: url('../../node_modules/@fontsource-variable/jetbrains-mono/files/jetbrains-mono-greek-wght-normal.woff2') format('woff2-variations');
+}
+
+/* Farbwelt "Zeichentisch": warmes Papier, Tusche, ein Signalrot für alles, was läuft. */
+:root {
+  --paper: #f3efe6;
+  --paper-2: #ebe6da;
+  --sheet: #fbf9f4;
+  --ink: #1c2029;
+  --ink-2: #4b515e;
+  --ink-3: #868b95;
+  --rule: #d8d1c2;
+  --rule-2: #c6bead;
+  --grid: #ddd6c6;
+  --state-fill: #fffdf8;
+  --signal: #d6461c;
+  --signal-ink: #ffffff;
+  --signal-soft: #f9dccf;
+  --select: #2f5bd0;
+  --select-soft: rgba(47, 91, 208, 0.12);
+  --ok: #2d7a4b;
+  --ok-soft: #dcefe2;
+  --bad: #b3262f;
+  --bad-soft: #f6dcdc;
+  --warn: #9a6500;
+  --warn-soft: #f7ead0;
+  --shadow: 0 1px 0 rgba(28, 32, 41, 0.04), 0 6px 20px -8px rgba(28, 32, 41, 0.18);
+  --radius: 10px;
+  --font-ui: 'Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --font-math: 'Serif', 'Iowan Old Style', Georgia, serif;
+  --font-mono: 'Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #12151b;
+    --paper-2: #181c24;
+    --sheet: #161a21;
+    --ink: #e8e4da;
+    --ink-2: #b2b0a8;
+    --ink-3: #7b7f88;
+    --rule: #2a2f3a;
+    --rule-2: #3a404c;
+    --grid: #262b35;
+    --state-fill: #1d222b;
+    --signal: #ff7b47;
+    --signal-ink: #1a0d06;
+    --signal-soft: rgba(255, 123, 71, 0.18);
+    --select: #7fa2ff;
+    --select-soft: rgba(127, 162, 255, 0.16);
+    --ok: #6fcf97;
+    --ok-soft: rgba(111, 207, 151, 0.14);
+    --bad: #ff7a80;
+    --bad-soft: rgba(255, 122, 128, 0.14);
+    --warn: #f0b858;
+    --warn-soft: rgba(240, 184, 88, 0.14);
+    --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --paper: #12151b;
+  --paper-2: #181c24;
+  --sheet: #161a21;
+  --ink: #e8e4da;
+  --ink-2: #b2b0a8;
+  --ink-3: #7b7f88;
+  --rule: #2a2f3a;
+  --rule-2: #3a404c;
+  --grid: #262b35;
+  --state-fill: #1d222b;
+  --signal: #ff7b47;
+  --signal-ink: #1a0d06;
+  --signal-soft: rgba(255, 123, 71, 0.18);
+  --select: #7fa2ff;
+  --select-soft: rgba(127, 162, 255, 0.16);
+  --ok: #6fcf97;
+  --ok-soft: rgba(111, 207, 151, 0.14);
+  --bad: #ff7a80;
+  --bad-soft: rgba(255, 122, 128, 0.14);
+  --warn: #f0b858;
+  --warn-soft: rgba(240, 184, 88, 0.14);
+  --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+:focus-visible {
+  outline: 2px solid var(--select);
+  outline-offset: 2px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: 'calt' 0;
+}
+.math {
+  font-family: var(--font-math);
+  font-style: italic;
+}
+
+/* Gemeinsame Bausteine */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--sheet);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background 0.12s,
+    border-color 0.12s;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--rule-2);
+  background: var(--paper-2);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.btn.ghost {
+  border-color: transparent;
+  background: transparent;
+}
+.btn.ghost:hover:not(:disabled) {
+  background: var(--paper-2);
+}
+.btn.icon {
+  width: 30px;
+  padding: 0;
+  justify-content: center;
+}
+.btn.primary {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+.btn.primary:hover:not(:disabled) {
+  background: var(--ink-2);
+  border-color: var(--ink-2);
+}
+.btn[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+.field {
+  height: 30px;
+  padding: 0 9px;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--sheet);
+  outline: none;
+}
+.field:focus {
+  border-color: var(--select);
+  box-shadow: 0 0 0 3px var(--select-soft);
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.kbd {
+  display: inline-block;
+  min-width: 20px;
+  padding: 1px 5px;
+  border: 1px solid var(--rule);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-align: center;
+  color: var(--ink-2);
+  background: var(--sheet);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}

@@ -1,0 +1,25 @@
+(* Textsprache M1; Präzisierungen siehe docs/kern-spec-m1.md *)
+document    = { ws | comment | object } ;
+object      = kind , ws , name , ws? , "{" , body , "}" ;
+kind        = "dea" | "nea" ;
+body        = { ws | comment | statement } ;
+statement   = alphabet | states | start | accept | layout | transition ;
+alphabet    = "alphabet" , { ws , symbol } ;
+states      = "states" , { ws , state } ;
+start       = "start" , ws , state ;
+accept      = "accept" , { ws , state } ;
+layout      = "layout" , { ws , state , "@" , number , "," , number } ;
+transition  = state , ws , "-" , labels , "->" , ws , state ;
+labels      = label , { ws? , "," , ws? , label } ;
+label       = "ε" | "eps" | symbol , { symbol } ;
+symbol      = plainchar | "\" , escchar | "<" , ident , ">" ;
+plainchar   = (* jedes Zeichen außer Leerraum und - , < > # \ { } ε *) ;
+escchar     = (* jedes Zeichen, z. B. \- \, \< \> \# \\ \{ \} \ε und "\ " für Leerzeichen *) ;
+ident       = identchar , { identchar } ;
+state       = statechar1 , { statechar } ;
+statechar1  = letter | digit | "_" | "+" | "'" ;
+statechar   = statechar1 | "-" ;
+name        = state ;
+number      = [ "-" ] , digit , { digit } , [ "." , { digit } ] ;
+comment     = "#" , { (* bis Zeilenende *) } ;
+(* alphabet, states, accept, layout reichen bis zum Zeilenende; start nimmt genau einen Namen. *)

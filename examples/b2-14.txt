@@ -1,0 +1,12 @@
+# Skript 2.14: DEA mit drei Zuständen
+dea B2_14 {
+  alphabet 0 1
+  start A
+  accept A B
+  A -0-> A
+  A -1-> B
+  B -1-> B
+  B -0-> C
+  C -0,1-> C
+  layout A@0,0 B@200,0 C@400,0
+}

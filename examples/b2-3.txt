@@ -1,0 +1,14 @@
+# Skript 2.3: Dualzahlen mit Vorzeichen
+dea Dualzahl {
+  alphabet 0 1 \-
+  start A
+  accept B
+  A -0,1-> B
+  A -\--> M
+  M -0,1-> B
+  M -\--> Q
+  B -0,1-> B
+  B -\--> Q
+  Q -0,1,\--> Q
+  layout A@0,0 B@240,-80 M@240,90 Q@480,10
+}

@@ -1,0 +1,11 @@
+# Skript 2.61: NEA ohne Fangzustand
+nea N2_61 {
+  alphabet 0 1
+  start 0
+  accept 0 1 2
+  0 -0-> 1
+  1 -0-> 2
+  2 -0-> 2
+  2 -1-> 0
+  layout 0@0,0 1@200,0 2@400,0
+}

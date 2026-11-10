@@ -1,0 +1,14 @@
+# Skript 2.15: DEA mit Fangzustand
+dea B2_15 {
+  alphabet 0 1
+  start 0
+  accept 0 1 2
+  0 -0-> 1
+  1 -0-> 2
+  2 -0-> 2
+  2 -1-> 0
+  0 -1-> Q
+  1 -1-> Q
+  Q -0,1-> Q
+  layout 0@0,0 1@200,0 2@400,0 Q@200,160
+}
