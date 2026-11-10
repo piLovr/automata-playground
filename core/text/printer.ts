@@ -1,8 +1,8 @@
 // Kanonischer Druck der Textsprache.
-import { getKind } from '../model/kinds';
-import type { Document, FormalObject } from '../model/types';
+import { getKind, moveLetter } from '../model/kinds';
+import type { Document, FormalObject, NkaLabel, TmLabel } from '../model/types';
 import { transitionsOf } from '../model/util';
-import { printSymbol } from './word';
+import { printSymbol, printWord } from './word';
 
 export interface PrintOptions {
   /** Standard true: layout-Zeile ausgeben, falls Positionen vorhanden. */
@@ -21,6 +21,7 @@ export function printObject(obj: FormalObject, opts: PrintOptions = {}): string 
   const nm = (id: string): string => nameOf.get(id) ?? id;
   const lines: string[] = [];
   if (obj.alphabet.length > 0) lines.push('  alphabet ' + obj.alphabet.map(printSymbol).join(' '));
+  for (const l of spec.printHead(obj)) lines.push('  ' + l);
 
   // Gruppen (from, to) in Reihenfolge des ersten Übergangs
   const groups = new Map<string, { from: string; to: string; labels: string[] }>();
@@ -31,7 +32,7 @@ export function printObject(obj: FormalObject, opts: PrintOptions = {}): string 
       g = { from: t.from, to: t.to, labels: [] };
       groups.set(key, g);
     }
-    g.labels.push(spec.printLabel(t.label));
+    if (!spec.lineForm) g.labels.push(spec.printLabel(t.label));
   }
 
   // Reihenfolge des ersten Auftretens nach dem Parse-Schema (ohne states-Zeile)
@@ -45,9 +46,17 @@ export function printObject(obj: FormalObject, opts: PrintOptions = {}): string 
   };
   if (obj.start !== null && nameOf.has(obj.start)) see(obj.start);
   for (const id of obj.accept) if (nameOf.has(id)) see(id);
-  for (const g of groups.values()) {
-    see(g.from);
-    see(g.to);
+  for (const id of spec.tailRefs(obj)) if (nameOf.has(id)) see(id);
+  if (spec.lineForm) {
+    for (const t of transitionsOf(obj)) {
+      see(t.from);
+      see(t.to);
+    }
+  } else {
+    for (const g of groups.values()) {
+      see(g.from);
+      see(g.to);
+    }
   }
   const modelOrder = obj.states.map((s) => s.id);
   const needStates =
@@ -57,8 +66,24 @@ export function printObject(obj: FormalObject, opts: PrintOptions = {}): string 
   if (obj.start !== null && nameOf.has(obj.start)) lines.push('  start ' + nm(obj.start));
   const acc = obj.accept.filter((id) => nameOf.has(id));
   if (acc.length > 0) lines.push('  accept ' + acc.map(nm).join(' '));
-  for (const g of groups.values()) {
-    lines.push(`  ${nm(g.from)} -${g.labels.join(',')}-> ${nm(g.to)}`);
+  for (const l of spec.printTail(obj, nm)) lines.push('  ' + l);
+  if (spec.lineForm) {
+    for (const t of transitionsOf(obj)) {
+      if (obj.kind === 'nka') {
+        const l = t.label as NkaLabel;
+        const read = l.read === null ? 'ε' : printSymbol(l.read);
+        lines.push(`  ${nm(t.from)}, ${printSymbol(l.top)}, ${read} -> ${nm(t.to)}, ${printWord(l.push)}`);
+      } else {
+        const l = t.label as TmLabel;
+        lines.push(
+          `  ${nm(t.from)}, ${printSymbol(l.read)} -> ${nm(t.to)}, ${printSymbol(l.write)}, ${moveLetter(l.move)}`,
+        );
+      }
+    }
+  } else {
+    for (const g of groups.values()) {
+      lines.push(`  ${nm(g.from)} -${g.labels.join(',')}-> ${nm(g.to)}`);
+    }
   }
   if (opts.layout !== false) {
     const parts = obj.states

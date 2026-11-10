@@ -174,7 +174,8 @@ class AppStore {
 
   addObject(kind: ObjectKind): void {
     const names = this.doc.objects.map((o) => o.name);
-    const name = freshName(names, kind === 'dea' ? 'M' : 'N');
+    const prefix: Record<ObjectKind, string> = { dea: 'M', nea: 'N', mealy: 'Mealy', moore: 'Moore', nka: 'K', tm: 'T' };
+    const name = freshName(names, prefix[kind]);
     const obj = emptyAutomaton(kind, name);
     this.commit({ ...this.doc, objects: [...this.doc.objects, obj] }, { active: this.doc.objects.length });
     this.select([]);
@@ -205,6 +206,8 @@ class AppStore {
     const names = this.doc.objects.map((o) => o.name);
     const name = names.includes(incoming.name) ? freshName(names, incoming.name + '_') : incoming.name;
     const obj = withLayout({ ...incoming, name });
+    if (ex.word !== undefined) this.words[name] = ex.word;
+    this.simStep = 0;
     this.commit({ ...this.doc, objects: [...this.doc.objects, obj] }, { active: this.doc.objects.length });
     this.select([]);
   }

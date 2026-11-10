@@ -1,0 +1,28 @@
+# Skript 5.9: Turingmaschine für Palindrome
+tm Palindrom_TM {
+  alphabet a b
+  blank □
+  states r ra rb la lb l f+ f-
+  start r
+  accept f+
+  reject f-
+  r, a -> ra, □, R
+  r, b -> rb, □, R
+  r, □ -> f+, □, N
+  ra, a -> ra, a, R
+  ra, b -> ra, b, R
+  ra, □ -> la, □, L
+  rb, a -> rb, a, R
+  rb, b -> rb, b, R
+  rb, □ -> lb, □, L
+  la, a -> l, □, L
+  la, b -> f-, b, N
+  la, □ -> f+, □, N
+  lb, a -> f-, a, N
+  lb, b -> l, □, L
+  lb, □ -> f+, □, N
+  l, a -> l, a, L
+  l, b -> l, b, L
+  l, □ -> r, □, R
+  layout r@0,0 ra@240,-130 la@480,-130 rb@240,150 lb@480,150 l@360,10 f+@-140,-250 f-@720,10
+}

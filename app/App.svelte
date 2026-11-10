@@ -82,7 +82,7 @@
     const name = prompt(t('prompt.objectName'), obj?.name ?? '');
     if (name === null) return;
     const clean = name.trim();
-    if (!/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'-]*$/u.test(clean)) {
+    if (!/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'−-]*$/u.test(clean)) {
       store.notify('Erlaubt: Buchstaben, Ziffern, _ + \' und -', 'error');
       return;
     }
@@ -124,6 +124,31 @@
     }
   }
 
+  /** Anfangskellersymbol bzw. Blank: genau ein Zeichen. */
+  function setSpecial(which: 'y0' | 'blank', input: HTMLInputElement): void {
+    const v = [...input.value.trim()];
+    if (v.length !== 1) {
+      store.notify('Genau ein Symbol.', 'error');
+      input.value = obj?.kind === 'nka' ? obj.y0 : obj?.kind === 'tm' ? obj.blank : '';
+      return;
+    }
+    store.update((o) => (o.kind === 'nka' && which === 'y0' ? edit.setY0(o, v[0]!) : o.kind === 'tm' && which === 'blank' ? edit.setBlank(o, v[0]!) : o));
+  }
+
+  /** TM: Eingabealphabet X frei setzen (Übergänge erweitern nur das Bandalphabet). */
+  function setInputAlphabet(raw: string): void {
+    const syms = [...new Set(raw.split(/\s+/).filter(Boolean))];
+    if (syms.some((x) => [...x].length !== 1)) {
+      store.notify('Je Symbol genau ein Zeichen, durch Leerzeichen getrennt.', 'error');
+      return;
+    }
+    store.update((o) => {
+      if (o.kind !== 'tm') return o;
+      const tape = [...o.tapeAlphabet, ...syms.filter((x) => !o.tapeAlphabet.includes(x))];
+      return edit.setTapeAlphabet(edit.setAlphabet(o, syms), tape);
+    });
+  }
+
   const set = (items: string[]) => (items.length ? `{${items.join(', ')}}` : '∅');
   const missing = $derived(sim.diagnostics.some((d) => d.code === 'dea.missing'));
 </script>
@@ -156,10 +181,15 @@
       {#snippet children(close)}
         <button class="item" onclick={() => (store.addObject('dea'), close())}>{t('menu.new.dea')}</button>
         <button class="item" onclick={() => (store.addObject('nea'), close())}>{t('menu.new.nea')}</button>
+        <button class="item" onclick={() => (store.addObject('mealy'), close())}>{t('menu.new.mealy')}</button>
+        <button class="item" onclick={() => (store.addObject('moore'), close())}>{t('menu.new.moore')}</button>
+        <button class="item" onclick={() => (store.addObject('nka'), close())}>{t('menu.new.nka')}</button>
+        <button class="item" onclick={() => (store.addObject('tm'), close())}>{t('menu.new.tm')}</button>
         <hr />
+        <p class="menu-head">Beispiele</p>
         {#each examples as ex (ex.id)}
           <button class="item" onclick={() => (store.loadExample(ex.id), close())}>
-            <span class="ref">{ex.ref}</span>{ex.title}
+            <span class="ref">{ex.ref || '·'}</span>{ex.title}
           </button>
         {/each}
       {/snippet}
@@ -243,7 +273,9 @@
           {#snippet label()}<span class="kind-long">{t(`kind.${obj.kind}.long`)}</span>{/snippet}
           {#snippet children(close)}
             <button class="item" onclick={() => (renameObject(), close())}>{t('menu.rename')}</button>
-            <button class="item" onclick={() => (convert(), close())}>{t(obj.kind === 'dea' ? 'menu.convert.nea' : 'menu.convert.dea')}</button>
+            {#if obj.kind === 'dea' || obj.kind === 'nea'}
+              <button class="item" onclick={() => (convert(), close())}>{t(obj.kind === 'dea' ? 'menu.convert.nea' : 'menu.convert.dea')}</button>
+            {/if}
             <hr />
             <button
               class="item danger"
@@ -272,16 +304,59 @@
   <aside class="side">
     {#if obj}
       <section class="definition" aria-label={t('panel.definition')}>
-        <p class="tuple math">{t(obj.kind === 'dea' ? 'def.dea' : 'def.nea')}</p>
+        <p class="tuple math">{t(`def.${obj.kind}`)}</p>
         <dl class="math">
           <dt>Z</dt>
           <dd>{set(obj.states.map((s) => s.name))}</dd>
           <dt>z₀</dt>
           <dd>{obj.start ? stateName(obj, obj.start) : '—'}</dd>
           <dt>X</dt>
-          <dd class="mono-set">{set(obj.alphabet.map(showSym))}</dd>
-          <dt>F</dt>
-          <dd>{set(obj.accept.map((id) => stateName(obj, id)))}</dd>
+          {#if obj.kind === 'tm'}
+            <dd>
+              <input
+                class="alpha-input mono"
+                value={obj.alphabet.join(' ')}
+                placeholder="z. B. a b"
+                aria-label="Eingabealphabet"
+                title="Eingabesymbole, durch Leerzeichen getrennt"
+                onchange={(e) => setInputAlphabet(e.currentTarget.value)}
+              />
+            </dd>
+          {:else}
+            <dd class="mono-set">{set(obj.alphabet.map(showSym))}</dd>
+          {/if}
+          {#if obj.kind === 'mealy' || obj.kind === 'moore'}
+            <dt>Y</dt>
+            <dd class="mono-set">{set(obj.outputAlphabet.map(showSym))}</dd>
+          {/if}
+          {#if obj.kind === 'moore'}
+            <dt>g</dt>
+            <dd class="mono-set">{obj.states.map((s) => `${s.name}↦${s.out ?? '?'}`).join('  ') || '∅'}</dd>
+          {/if}
+          {#if obj.kind === 'nka'}
+            <dt>Y</dt>
+            <dd class="mono-set">{set(obj.stackAlphabet.map(showSym))}</dd>
+            <dt>y₀</dt>
+            <dd>
+              <input class="sym-input mono" value={obj.y0} aria-label="Anfangskellersymbol" onchange={(e) => setSpecial('y0', e.currentTarget)} />
+            </dd>
+          {/if}
+          {#if obj.kind === 'tm'}
+            <dt>Y</dt>
+            <dd class="mono-set">{set(obj.tapeAlphabet.map(showSym))}</dd>
+            <dt>Blank</dt>
+            <dd>
+              <input class="sym-input mono" value={obj.blank} aria-label="Blanksymbol" onchange={(e) => setSpecial('blank', e.currentTarget)} />
+            </dd>
+          {/if}
+          {#if obj.kind !== 'mealy' && obj.kind !== 'moore'}
+            <dt>{obj.kind === 'tm' ? 'F₊' : 'F'}</dt>
+            <dd>{set(obj.accept.map((id) => stateName(obj, id)))}</dd>
+          {/if}
+          {#if obj.kind === 'tm'}
+            <dt>F₋</dt>
+            <dd>{set(obj.reject.map((id) => stateName(obj, id)))}</dd>
+          {/if}
         </dl>
       </section>
 
@@ -342,6 +417,8 @@
           <dd>{t('keys.s')}</dd>
           <dt><span class="kbd">A</span></dt>
           <dd>{t('keys.a')}</dd>
+          <dt><span class="kbd">R</span> <span class="kbd">O</span></dt>
+          <dd>{t('keys.r')} · {t('keys.o')}</dd>
           <dt><span class="kbd">F2</span> <span class="kbd">↵</span></dt>
           <dd>{t('keys.f2')}</dd>
           <dt><span class="kbd">Entf</span></dt>
@@ -370,7 +447,7 @@
   .app {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 6px var(--side);
-    grid-template-rows: 52px minmax(0, 1fr) 216px;
+    grid-template-rows: 52px minmax(0, 1fr) 240px;
     grid-template-areas:
       'top top top'
       'stage resizer side'
@@ -617,6 +694,33 @@
     margin: 0;
     overflow-wrap: anywhere;
   }
+  :global(.menu-head) {
+    margin: 6px 10px 2px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .alpha-input {
+    width: 120px;
+    height: 24px;
+    padding: 0 6px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--sheet);
+    font-style: normal;
+  }
+  .sym-input {
+    width: 36px;
+    height: 24px;
+    padding: 0 6px;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--sheet);
+    text-align: center;
+    font-style: normal;
+  }
   dd.mono-set {
     font-family: var(--font-mono);
     font-style: normal;
@@ -703,7 +807,7 @@
   .toast {
     position: fixed;
     left: 50%;
-    bottom: 232px;
+    bottom: 256px;
     transform: translateX(-50%);
     z-index: 50;
     padding: 9px 16px;

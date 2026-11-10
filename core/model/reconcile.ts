@@ -74,6 +74,7 @@ export function reconcile(prev: FormalObject | undefined, next: FormalObject): F
     states,
     start: next.start === null ? null : map(next.start),
     accept: next.accept.map(map),
+    ...(next.kind === 'tm' ? { reject: next.reject.map(map) } : {}),
     transitions,
   } as FormalObject;
 }

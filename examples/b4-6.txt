@@ -1,0 +1,14 @@
+# Skript 4.6: Kellerautomat für 0ᵏ1ᵏ
+nka NullEins {
+  alphabet 0 1
+  keller *
+  states z0 z1 z+ z−
+  start z0
+  accept z+
+  z0, *, 0 -> z0, 0*
+  z0, 0, 0 -> z0, 00
+  z0, 0, 1 -> z1, ε
+  z1, 0, 1 -> z1, ε
+  z1, *, ε -> z+, *
+  layout z0@0,0 z1@240,0 z+@480,0 z−@240,160
+}

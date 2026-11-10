@@ -1,14 +1,32 @@
 <script lang="ts">
-  import type { StateId, TreeNode, Word } from '../../core/index';
+  import type { StateId, TreeNode } from '../../core/index';
   import { store } from '../lib/store.svelte';
-  import { stateName, showWord } from '../lib/format';
+  import { stateName, showSym } from '../lib/format';
+  import { showLabel } from '../lib/labels';
   import { t } from '../i18n';
 
-  let { nodes, current, onhover }: { nodes: TreeNode[]; current: number; onhover: (s: StateId | null) => void } = $props();
+  let {
+    nodes,
+    current,
+    onhover,
+    selected = null,
+    stackOf = false,
+    onselect,
+  }: {
+    nodes: TreeNode[];
+    current: number;
+    onhover: (s: StateId | null) => void;
+    /** Gewählter Knoten (Kellerautomat: Ast für den Verlauf). */
+    selected?: number | null;
+    /** Kellerinhalt unter dem Knoten zeigen. */
+    stackOf?: boolean;
+    /** Klick auf einen Knoten; ohne Angabe springt die Simulation zur Position. */
+    onselect?: (id: number) => void;
+  } = $props();
 
   const MAX = 400;
-  const COL = 74;
-  const ROW = 30;
+  const COL = $derived(stackOf ? 88 : 74);
+  const ROW = $derived(stackOf ? 40 : 30);
 
   const shown = $derived(nodes.slice(0, MAX));
 
@@ -42,10 +60,9 @@
   const byId = $derived(new Map(shown.map((n) => [n.id, n])));
 
   function viaLabel(n: TreeNode): string {
-    if (!n.via) return '';
-    const tr = store.obj?.transitions.find((x) => x.id === n.via);
-    if (!tr) return '';
-    return showWord(Array.isArray(tr.label) ? (tr.label as Word) : [tr.label as string]);
+    if (!n.via || !store.obj) return '';
+    const tr = store.obj.transitions.find((x) => x.id === n.via);
+    return tr ? showLabel(store.obj.kind, tr.label) : '';
   }
 
   const GLYPH: Record<string, string> = { accepting: '✓', rejecting: '✗', dead: '†', cycle: '↻', limit: '…', open: '' };
@@ -67,18 +84,20 @@
         <g
           class="node {n.status}"
           class:now={n.pos === current}
+          class:picked={n.id === selected}
           transform="translate({p.x} {p.y})"
           role="button"
           tabindex="-1"
           onmouseenter={() => onhover(n.state)}
           onmouseleave={() => onhover(null)}
-          onclick={() => (store.simStep = n.pos)}
+          onclick={() => (onselect ? onselect(n.id) : (store.simStep = n.pos))}
           onkeydown={() => {}}
         >
           <title>{stateName(store.obj, n.state)} · {n.pos} {t('sim.read')}{n.status !== 'open' ? ` · ${t(`tree.${n.status}`)}` : ''}</title>
           <circle r="12" />
           <text class="math" text-anchor="middle" dominant-baseline="central">{stateName(store.obj, n.state)}</text>
           {#if GLYPH[n.status]}<text class="glyph" x="17" dominant-baseline="central">{GLYPH[n.status]}</text>{/if}
+          {#if stackOf && n.stack}<text class="stk mono" y="22" text-anchor="middle">{n.stack.map(showSym).join('')}</text>{/if}
         </g>
       {/each}
     </g>
@@ -141,6 +160,14 @@
   .node.cycle .glyph,
   .node.limit .glyph {
     fill: var(--warn);
+  }
+  .node .stk {
+    font-size: 10px;
+    fill: var(--ink-3);
+  }
+  .node.picked circle {
+    stroke: var(--select);
+    stroke-width: 2.6;
   }
   .node.now circle {
     fill: var(--signal);

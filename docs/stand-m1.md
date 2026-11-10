@@ -72,7 +72,7 @@
 - **Vor dem Pfeil muss ein Leerzeichen stehen**, weil Zustandsnamen `-` und `+` enthalten
   dürfen (`z+`, `f-` für spätere Kapitel).
 - **F in Beispiel 2.3**: Das Skript nennt dort kein F (Definition 2.2 hat keines). F = {B}
-  folgt aus g(B) = 1 in 2.10 und passt zu den Anforderungen. Bitte bestätigen.
+  folgt aus g(B) = 1 in 2.10 und passt zu den Anforderungen. Entschieden: bleibt so.
 - **Beispiel 2.66** enthält wie im Skript die Zustände 1, 3, 4 ohne Kanten.
 - **Layout im Text**: Positionen stehen in einer `layout`-Zeile. In der Text-Sicht ist sie
   standardmäßig ausgeblendet und lässt sich einblenden. Beim Speichern und Teilen ist sie
@@ -98,3 +98,59 @@
 - **Subagenten** liegen unter `.claude/agents/`. Sie werden erst in einer neuen Sitzung
   geladen; in dieser Sitzung liefen sie als allgemeine Agenten mit festem Modell und
   der jeweiligen Rollendatei.
+
+## Nachtrag: Mealy, Moore, Kellerautomat, Turingmaschine (vorgezogen aus M3, M4, M6)
+
+Auf Wunsch in schlanker Form ergänzt: Anlegen, Bearbeiten in allen drei Sichten,
+Simulation und Beispiele. Verfahren und Umwandlungen (Grammatik ↔ NKA, Mealy ↔ Moore,
+LBA usw.) bleiben in ihren Meilensteinen.
+
+- **Typen** im Kern (`core/model/types.ts`) als weitere Einträge im Typ-Verzeichnis.
+  Spezifikation: `docs/kern-spec-typen.md`, Skriptnotizen: `docs/skript-notizen-typen.md`.
+- **Textform:** Mealy `A -0/1-> B`; Moore `out A=0 B=1`; Kellerautomat und TM in
+  Zeilenform wie im Skript (`z0, *, 0 -> z0, 0*` bzw. `r, a -> ra, □, R`), dazu
+  `ausgabealphabet`, `keller`, `kelleralphabet`, `bandalphabet`, `blank`, `reject`.
+- **Graph:**
+  - Beschriftungen je Typ (`0 / 1`, `*, 0 → 0*`, `a → □, R`); beim Keller und der TM
+    stehen mehrere Beschriftungen untereinander.
+  - Moore zeigt die Ausgabe im Zustand.
+  - F₋ ist durch einen gestrichelten Innenring mit Querstrich gekennzeichnet.
+  - Tasten: R für F₋, O für die Moore-Ausgabe.
+- **Tabelle:** Mealy-Zellen „z' / y“, Moore mit Spalte g, Keller und TM als Zeilentabelle
+  (z, y, x → z', v bzw. z, y → z', y', d).
+- **Simulation:**
+  - Mealy und Moore: Ausgabewort wächst mit.
+  - Kellerautomat: Keller mit oberstem Symbol, Verlaufstabelle wie in 4.6 und
+    Konfigurationsbaum. Klick auf einen Knoten wählt einen anderen Ast.
+  - TM: Band mit Kopf, Konfigurationsliste wie in Abb. 5.2, Zähler für Schritte und
+    besuchte Felder.
+- **Beispiele:** 2.10 (Moore), 4.6, 4.9 (Kellerautomaten) und 5.9 (TM), dazu zwei eigene
+  Beispiele, als „nicht im Skript“ markiert: Mealy „laufende Parität“ und TM „Binärzahl + 1“.
+  Tests prüfen 4.6 Zeile für Zeile gegen die Verlaufstabelle und 5.9 gegen Abb. 5.2
+  (22 Konfigurationen).
+
+### Festlegungen (entschieden)
+
+- **Moore-Ausgabe:** Das Skript definiert kein Ausgabewort. Gewählt: g angewandt auf
+  f**(z₀, w), also |w| + 1 Symbole einschließlich g(z₀). Für 2.10 und `-101` ergibt das
+  `00111`; die letzte Ausgabe ist 1, wie in M3 gefordert. Mealy: |w| Symbole.
+  Entschieden: bleibt so (übliche Moore-Konvention, passt zur Länge von f**).
+- **Standardregel in 4.6 und 4.9** („in allen anderen Fällen …“) ist nicht als Übergang
+  modelliert. Ohne passenden Übergang endet ein Ast; z− steht ohne Kanten im Automaten.
+- **y₀-Regel:** Wird y₀ oben gelesen, muss das gekellerte Wort auf y₀ enden (y₀ bleibt
+  unten), passend zu `z0, *, 0 -> z0, 0*` in 4.6. Die Skriptnotiz formuliert hier
+  „beginnen“. Entschieden: „endet auf y₀“, weil nur das zu Beispiel 4.6 passt.
+- **Kellerautomat:** Breitensuche über Konfigurationen mit Grenze für die Kellerhöhe. Wird
+  dabei ein Ast abgeschnitten und nichts akzeptiert, lautet das Ergebnis „Schrittlimit“,
+  nicht „abgelehnt“.
+- **TM-Eingabealphabet X** ist in der Definition frei einstellbar. Übergänge erweitern
+  nur das Bandalphabet Y.
+- Zustandsnamen dürfen das Minuszeichen − (U+2212) enthalten, damit z− wie im Skript
+  geschrieben werden kann.
+
+### Offen
+
+- Kein „leerer Keller“ als Akzeptanzoption (laut Abschnitt 12 abschaltbare Option).
+- DKA-Prüfung meldet Verstöße nur als Hinweis. Eine eigene Objektart „DKA“ gibt es nicht.
+- Stapellauf bei Mealy/Moore vergleicht nur „gelesen“. Eine Erwartung an das
+  Ausgabewort fehlt noch.

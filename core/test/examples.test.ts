@@ -65,3 +65,39 @@ describe('Simulation der Beispiele', () => {
     expect(simulate(objectOf('b2-66.txt'), word).result).not.toBe('accepted');
   });
 });
+
+describe('Simulation der Beispiele für Mealy, Moore, Keller, TM', () => {
+  const objectOf = (file: string): FormalObject => {
+    const obj = parseDocument(load(file)).doc.objects[0];
+    if (!obj) throw new Error(`kein Objekt in ${file}`);
+    return obj;
+  };
+  const sym = (s: string) => [...s];
+  it('b2-10: Moore gibt für -101 die Ausgabe 00111', () => {
+    const t = simulate(objectOf('b2-10.txt'), sym('-101'));
+    expect(t.result).toBe('done');
+    expect(t.output?.join('')).toBe('00111');
+  });
+  it('mealy-paritaet: 1101 ergibt 1001', () => {
+    expect(simulate(objectOf('mealy-paritaet.txt'), sym('1101')).output?.join('')).toBe('1001');
+  });
+  it('b4-6: 00001111 akzeptiert, 0001111 nicht', () => {
+    expect(simulate(objectOf('b4-6.txt'), sym('00001111')).result).toBe('accepted');
+    expect(simulate(objectOf('b4-6.txt'), sym('0001111')).result).not.toBe('accepted');
+  });
+  it('b4-9: abaaaaba akzeptiert', () => {
+    expect(simulate(objectOf('b4-9.txt'), sym('abaaaaba')).result).toBe('accepted');
+  });
+  it('b5-9: abbba akzeptiert in 21 Schritten, ab abgelehnt', () => {
+    const t = simulate(objectOf('b5-9.txt'), sym('abbba'));
+    expect(t.result).toBe('accepted');
+    expect(t.steps.length).toBe(22);
+    expect(simulate(objectOf('b5-9.txt'), sym('ab')).result).toBe('rejected');
+  });
+  it('tm-inc: 1011 + 1 = 1100', () => {
+    const t = simulate(objectOf('tm-inc.txt'), sym('1011'));
+    expect(t.result).toBe('accepted');
+    const tape = t.steps.at(-1)!.tape!;
+    expect(tape.cells.join('').replace(/□/g, '')).toBe('1100');
+  });
+});

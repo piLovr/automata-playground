@@ -109,7 +109,10 @@ export function diagnosticText(d: Diagnostic, obj?: FormalObject): string {
 export function explainText(obj: FormalObject | undefined, key: string, params: Record<string, unknown>): string {
   const p: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(params)) {
-    if (k === 'symbol' && typeof v === 'string') p[k] = showSym(v);
+    if (k === 'move') p[k] = v === -1 ? 'nach links' : v === 1 ? 'nach rechts' : 'nicht';
+    else if (k === 'read' && v === null) p[k] = 'ε';
+    else if (k === 'push' && Array.isArray(v)) p[k] = showWord(v as Word);
+    else if ((k === 'symbol' || k === 'read' || k === 'write' || k === 'top' || k === 'out') && typeof v === 'string') p[k] = showSym(v);
     else if (Array.isArray(v)) p[k] = showSet(obj, v as StateId[]);
     else if (typeof v === 'string' && obj?.states.some((s) => s.id === v)) p[k] = stateName(obj, v);
     else p[k] = v;

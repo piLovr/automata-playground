@@ -1,13 +1,13 @@
 // Toleranter Parser der Textsprache.
-import { findKindByKeyword } from '../model/kinds';
-import type { AnyLabel } from '../model/kinds';
-import type { Diagnostic, Document, FormalObject, Point, State, Sym, Transition, Word } from '../model/types';
-import { labelWord } from '../model/util';
-import { KEYWORDS, Scanner, isStateStart } from './lexer';
+import { findKindByKeyword, parseMove } from '../model/kinds';
+import type { AnyLabel, Extras, KindSpec } from '../model/kinds';
+import type { Diagnostic, Document, FormalObject, NkaLabel, Point, State, Sym, TmLabel, Transition, Word } from '../model/types';
+import { COMMON_KEYWORDS, Scanner, isStateStart } from './lexer';
 import { readSymbol } from './word';
 
 interface LabelItem {
   word: Word;
+  raws: string[];
   start: number;
   end: number;
 }
@@ -56,7 +56,7 @@ function parseLabels(sc: Scanner): LabelItem[] | null {
       sc.unexpected(['Symbol']);
       return null;
     } else word = syms;
-    items.push({ word, start, end });
+    items.push({ word, raws, start, end });
     sc.skipInlineWs();
     if (sc.peek() === ',') {
       sc.advance();
@@ -95,7 +95,137 @@ function atListEnd(sc: Scanner): boolean {
   return c === '' || c === '\n' || c === '}';
 }
 
-function parseBody(sc: Scanner, spec: NonNullable<ReturnType<typeof findKindByKeyword>>, name: string, braceAt: number): FormalObject {
+interface SymSeq {
+  syms: Sym[];
+  raws: string[];
+  start: number;
+  end: number;
+}
+
+/** Liest Symbole bis `,`, `->`, Zeilenende, `}`, `#` oder Dateiende. null = Fehler (gemeldet). */
+function readSymSeq(sc: Scanner): SymSeq | null {
+  sc.skipInlineWs();
+  const start = sc.i;
+  const syms: Sym[] = [];
+  const raws: string[] = [];
+  for (;;) {
+    sc.skipInlineWs();
+    const c = sc.peek();
+    if (c === '' || c === '\n' || c === ',' || c === '}' || c === '#' || sc.startsWith('->')) break;
+    if (c === 'ε') {
+      raws.push('ε');
+      sc.advance();
+      continue;
+    }
+    const r = readSymbol(sc);
+    if (!r) return null;
+    syms.push(r.sym);
+    raws.push(r.raw);
+  }
+  if (raws.includes('ε') && raws.length > 1) {
+    sc.report('syntax.unexpected', { found: 'ε', expected: ['Symbol'] }, start, Math.max(1, sc.i - start));
+    return null;
+  }
+  return { syms, raws, start, end: sc.i };
+}
+
+const isEps = (raws: string[]): boolean => raws.join('') === 'ε' || raws.join('') === 'eps';
+
+function expectChar(sc: Scanner, ch: string): boolean {
+  sc.skipInlineWs();
+  if (sc.peek() === ch) {
+    sc.advance();
+    return true;
+  }
+  sc.unexpected([`"${ch}"`]);
+  return false;
+}
+
+function expectArrow(sc: Scanner): boolean {
+  sc.skipInlineWs();
+  if (sc.startsWith('->')) {
+    sc.i += 2;
+    return true;
+  }
+  sc.unexpected(['"->"']);
+  return false;
+}
+
+/** Genau ein Symbol (oder, mit allowEps, ε → null); meldet label.shape sonst. */
+function oneSymbol(sc: Scanner, kind: string, allowEps: boolean): { sym: Sym | null } | null {
+  const seq = readSymSeq(sc);
+  if (!seq) return null;
+  if (allowEps && isEps(seq.raws)) return { sym: null };
+  if (seq.syms.length !== 1) {
+    sc.report('label.shape', { kind, text: seq.raws.join('') }, seq.start, Math.max(1, seq.end - seq.start));
+    return null;
+  }
+  return { sym: seq.syms[0] as Sym };
+}
+
+function readTarget(sc: Scanner): string | null {
+  sc.skipInlineWs();
+  if (!isStateStart(sc.peek())) {
+    sc.unexpected(['Zustandsname']);
+    return null;
+  }
+  return sc.readStateName();
+}
+
+/** Zeilenform nka: `z, y, x -> z', v` (nach `z` und `,`). */
+function parseNkaLine(sc: Scanner): { to: string; label: NkaLabel } | null {
+  const top = oneSymbol(sc, 'nka', false);
+  if (!top || !expectChar(sc, ',')) return null;
+  const read = oneSymbol(sc, 'nka', true);
+  if (!read || !expectArrow(sc)) return null;
+  const to = readTarget(sc);
+  if (to === null || !expectChar(sc, ',')) return null;
+  const v = readSymSeq(sc);
+  if (!v) return null;
+  const push = isEps(v.raws) ? [] : v.syms;
+  if (push.length === 0 && !isEps(v.raws)) {
+    sc.unexpected(['Wort', 'ε']);
+    return null;
+  }
+  return { to, label: { top: top.sym as Sym, read: read.sym, push } };
+}
+
+/** Zeilenform tm: `z, y -> z', y', d` (nach `z` und `,`). */
+function parseTmLine(sc: Scanner): { to: string; label: TmLabel } | null {
+  const read = oneSymbol(sc, 'tm', false);
+  if (!read || !expectArrow(sc)) return null;
+  const to = readTarget(sc);
+  if (to === null || !expectChar(sc, ',')) return null;
+  const write = oneSymbol(sc, 'tm', false);
+  if (!write || !expectChar(sc, ',')) return null;
+  sc.skipInlineWs();
+  const at = sc.i;
+  while (!sc.eof() && !/^\s$/u.test(sc.peek()) && sc.peek() !== '}' && sc.peek() !== '#') sc.advance();
+  const text = sc.text.slice(at, sc.i);
+  const move = parseMove(text);
+  if (move === null) {
+    sc.report('syntax.unexpected', { found: text, expected: ['L', 'N', 'R'] }, at, Math.max(1, text.length));
+    return null;
+  }
+  return { to, label: { read: read.sym as Sym, write: write.sym as Sym, move } };
+}
+
+function parseSymbolList(sc: Scanner): Sym[] {
+  const list: Sym[] = [];
+  for (;;) {
+    sc.skipInline();
+    if (atListEnd(sc)) break;
+    const r = readSymbol(sc);
+    if (!r) {
+      sc.skipToLineEnd(true);
+      break;
+    }
+    if (!list.includes(r.sym)) list.push(r.sym);
+  }
+  return list;
+}
+
+function parseBody(sc: Scanner, spec: KindSpec, name: string, braceAt: number): FormalObject {
   const states: State[] = [];
   const byName = new Map<string, State>();
   const mention = (n: string): State => {
@@ -112,6 +242,17 @@ function parseBody(sc: Scanner, spec: NonNullable<ReturnType<typeof findKindByKe
   let startSeen = false;
   const accept: string[] = [];
   const transitions: Transition<AnyLabel>[] = [];
+  const extras: Extras = {
+    outputAlphabet: null,
+    stackAlphabet: null,
+    tapeAlphabet: null,
+    y0: null,
+    blank: null,
+    reject: [],
+    out: new Map(),
+  };
+  const isKeyword = (w: string): boolean =>
+    (COMMON_KEYWORDS as readonly string[]).includes(w) || spec.keywords.includes(w);
 
   for (;;) {
     sc.skipWsAndComments();
@@ -130,7 +271,7 @@ function parseBody(sc: Scanner, spec: NonNullable<ReturnType<typeof findKindByKe
       sc.skipToLineEnd(true);
       continue;
     }
-    if ((KEYWORDS as readonly string[]).includes(word)) {
+    if (isKeyword(word)) {
       switch (word) {
         case 'alphabet': {
           alphabet ??= [];
@@ -146,7 +287,59 @@ function parseBody(sc: Scanner, spec: NonNullable<ReturnType<typeof findKindByKe
           }
           break;
         }
+        case 'ausgabealphabet':
+          extras.outputAlphabet = parseSymbolList(sc);
+          break;
+        case 'kelleralphabet':
+          extras.stackAlphabet = parseSymbolList(sc);
+          break;
+        case 'bandalphabet':
+          extras.tapeAlphabet = parseSymbolList(sc);
+          break;
+        case 'keller':
+        case 'blank': {
+          sc.skipInline();
+          if (atListEnd(sc)) {
+            sc.unexpected(['Symbol']);
+            break;
+          }
+          const r = readSymbol(sc);
+          if (!r) {
+            sc.skipToLineEnd(true);
+            break;
+          }
+          const field = word === 'keller' ? 'y0' : 'blank';
+          if (extras[field] !== null) sc.report('syntax.duplicateStatement', { statement: word }, stmtStart, word.length);
+          else extras[field] = r.sym;
+          break;
+        }
+        case 'out': {
+          for (;;) {
+            sc.skipInline();
+            if (atListEnd(sc)) break;
+            if (!isStateStart(sc.peek())) {
+              sc.unexpected(['Zustandsname']);
+              sc.skipToLineEnd(true);
+              break;
+            }
+            const n = sc.readStateName();
+            if (sc.peek() !== '=') {
+              sc.unexpected(['"="']);
+              sc.skipToLineEnd(true);
+              break;
+            }
+            sc.advance();
+            const r = readSymbol(sc);
+            if (!r) {
+              sc.skipToLineEnd(true);
+              break;
+            }
+            extras.out.set(mention(n).id, r.sym);
+          }
+          break;
+        }
         case 'states':
+        case 'reject':
         case 'accept': {
           for (;;) {
             sc.skipInline();
@@ -158,6 +351,7 @@ function parseBody(sc: Scanner, spec: NonNullable<ReturnType<typeof findKindByKe
             }
             const s = mention(sc.readStateName());
             if (word === 'accept' && !accept.includes(s.id)) accept.push(s.id);
+            if (word === 'reject' && !extras.reject.includes(s.id)) extras.reject.push(s.id);
           }
           break;
         }
@@ -218,8 +412,24 @@ function parseBody(sc: Scanner, spec: NonNullable<ReturnType<typeof findKindByKe
       continue;
     }
     // Übergang: Name ws "-" labels "->" Name
-    const fromStart = stmtStart;
-    void fromStart;
+    if (spec.lineForm) {
+      sc.skipInlineWs();
+      if (sc.peek() !== ',') {
+        sc.unexpected(['","']);
+        sc.skipToLineEnd(true);
+        continue;
+      }
+      sc.advance();
+      const parsed = spec.kind === 'nka' ? parseNkaLine(sc) : parseTmLine(sc);
+      if (!parsed) {
+        sc.skipToLineEnd(true);
+        continue;
+      }
+      const from = mention(word);
+      const to = mention(parsed.to);
+      transitions.push({ id: `t${transitions.length}`, from: from.id, to: to.id, label: parsed.label });
+      continue;
+    }
     while (/^\s$/u.test(sc.peek())) sc.advance();
     if (sc.peek() !== '-') {
       sc.unexpected(['"-"']);
@@ -242,20 +452,16 @@ function parseBody(sc: Scanner, spec: NonNullable<ReturnType<typeof findKindByKe
     const from = mention(word);
     const to = mention(toName);
     for (const item of labels) {
-      const made = spec.makeLabel(item.word);
+      const made = spec.makeLabel(item.word, item.raws);
       if (!made.ok) {
-        sc.report(made.code, { label: item.word }, item.start, Math.max(1, item.end - item.start));
+        sc.report(made.code, made.params, item.start, Math.max(1, item.end - item.start));
         continue;
       }
       transitions.push({ id: `t${transitions.length}`, from: from.id, to: to.id, label: made.label });
     }
   }
 
-  if (alphabet === null) {
-    alphabet = [];
-    for (const t of transitions) for (const s of labelWord(t.label)) if (!alphabet.includes(s)) alphabet.push(s);
-  }
-  return { ...spec.empty(name), alphabet, states, start, accept, transitions } as FormalObject;
+  return spec.finish({ name, alphabet, states, start, accept, transitions }, extras);
 }
 
 /** Überspringt ein unbekanntes Objekt: `{ … }` mit Klammerzählung oder den Rest der Zeile. */

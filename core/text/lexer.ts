@@ -1,7 +1,18 @@
 // Zeichenleser mit Positionsverwaltung für die Textsprache.
 import type { Diagnostic, DiagnosticCode } from '../model/types';
 
-export const KEYWORDS = ['alphabet', 'states', 'start', 'accept', 'layout'] as const;
+/** Anweisungen aller Typen; welche für einen Typ gelten, steht in der Kind-Registry (`keywords`). */
+export const COMMON_KEYWORDS = ['alphabet', 'states', 'start', 'accept', 'layout'] as const;
+export const KEYWORDS = [
+  ...COMMON_KEYWORDS,
+  'ausgabealphabet',
+  'out',
+  'keller',
+  'kelleralphabet',
+  'bandalphabet',
+  'blank',
+  'reject',
+] as const;
 
 const SPECIAL = new Set(['-', ',', '<', '>', '#', '\\', '{', '}', 'ε']);
 
@@ -15,7 +26,7 @@ export function isStateStart(c: string): boolean {
   return c !== '' && /^[\p{L}\p{N}_+']$/u.test(c);
 }
 export function isStateChar(c: string): boolean {
-  return c === '-' || isStateStart(c);
+  return c === '-' || c === '\u2212' || isStateStart(c);
 }
 export function isInlineWs(c: string): boolean {
   return c !== '' && c !== '\n' && /^\s$/u.test(c);

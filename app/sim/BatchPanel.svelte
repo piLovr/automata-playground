@@ -39,7 +39,7 @@
     store.word = input;
   }
 
-  const GLYPH = { accepted: '✓', rejected: '✗', stuck: '⊘', limit: '…' } as const;
+  const GLYPH = { accepted: '✓', rejected: '✗', stuck: '⊘', limit: '…', done: '■' } as const;
 </script>
 
 <div class="wrap">

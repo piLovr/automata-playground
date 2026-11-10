@@ -1,0 +1,14 @@
+# Turingmaschine: Binärzahl + 1 (nicht im Skript)
+tm PlusEins {
+  alphabet 0 1
+  blank □
+  start r
+  accept f+
+  r, 0 -> r, 0, R
+  r, 1 -> r, 1, R
+  r, □ -> c, □, L
+  c, 1 -> c, 0, L
+  c, 0 -> f+, 1, N
+  c, □ -> f+, 1, N
+  layout r@0,0 c@240,0 f+@480,0
+}

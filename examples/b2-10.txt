@@ -1,0 +1,15 @@
+# Skript 2.10: Moore-Automat: Ausgabe 1 bei Dualzahl
+moore Dualzahl_g {
+  alphabet 0 1 \-
+  ausgabealphabet 0 1
+  start A
+  out A=0 B=1 M=0 Q=0
+  A -0,1-> B
+  A -\--> M
+  M -0,1-> B
+  M -\--> Q
+  B -0,1-> B
+  B -\--> Q
+  Q -0,1,\--> Q
+  layout A@0,0 B@240,-80 M@240,90 Q@480,10
+}

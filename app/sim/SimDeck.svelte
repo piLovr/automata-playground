@@ -10,11 +10,18 @@
 
   let view = $state<'sets' | 'tree'>('sets');
 
+  // Ein neuer Lauf beginnt wieder auf dem Weg, den der Kern gewählt hat.
+  $effect(() => {
+    void sim.trace;
+    sim.branch = null;
+  });
+
   const obj = $derived(store.obj);
   const trace = $derived(sim.trace);
   const word = $derived<Word>(sim.parsed.word ?? []);
-  const last = $derived(trace ? trace.steps.length - 1 : 0);
-  const isNea = $derived(obj?.kind === 'nea');
+  const last = $derived(sim.steps.length ? sim.steps.length - 1 : 0);
+  const kind = $derived(obj?.kind ?? 'dea');
+  const isNea = $derived(kind === 'nea');
 
   function go(i: number): void {
     store.simStep = Math.max(0, Math.min(last, i));
@@ -55,9 +62,31 @@
   const stuckAt = $derived(trace?.result === 'stuck' && sim.atEnd && !isNea ? (sim.step?.pos ?? 0) - 1 : -1);
 
   const resultTone = $derived(
-    !trace ? '' : trace.result === 'accepted' ? 'ok' : trace.result === 'limit' ? 'warn' : 'bad',
+    !trace ? '' : trace.result === 'accepted' ? 'ok' : trace.result === 'limit' ? 'warn' : trace.result === 'done' ? 'neutral' : 'bad',
   );
-  const GLYPH = { accepted: '✓', rejected: '✗', stuck: '⊘', limit: '…' } as const;
+  const GLYPH = { accepted: '✓', rejected: '✗', stuck: '⊘', limit: '…', done: '■' } as const;
+
+  /** TM: Band des aktuellen Schritts mit einem Blank Rand links und rechts. */
+  const tape = $derived.by(() => {
+    const tv = sim.step?.tape;
+    if (obj?.kind !== 'tm' || !tv) return null;
+    const blank = obj.blank;
+    const cells = [blank, ...tv.cells, blank];
+    return { cells, origin: tv.origin - 1, head: tv.head };
+  });
+
+  /** Konfiguration der TM als Text „u z v“ (Zustand vor dem Feld unter dem Kopf). */
+  function tmConfig(i: number): { left: string; state: string; right: string } | null {
+    const st = sim.steps[i];
+    const tv = st?.tape;
+    if (!tv || obj?.kind !== 'tm') return null;
+    const k = tv.head - tv.origin;
+    const cells = tv.cells.map(showSym);
+    while (k >= cells.length) cells.push(showSym(obj.blank));
+    const leftCells = k < 0 ? [] : cells.slice(0, k);
+    const rightCells = k < 0 ? [...Array(-k).fill(showSym(obj.blank)), ...cells] : cells.slice(k);
+    return { left: leftCells.join(''), state: stateName(obj, st.active[0] ?? ''), right: rightCells.join('') };
+  }
 </script>
 
 <svelte:window onkeydown={onKey} />
@@ -122,19 +151,52 @@
   </div>
 
   <div class="middle">
-    <!-- Symbolband: gelesener Teil gedämpft, Kopf über dem nächsten Symbol -->
-    <div class="tape" aria-label="Band">
-      {#each word as s, i (i)}
-        <div class="cell mono" class:read={i < headPos} class:head={i === headPos && !sim.atEnd} class:stuck={i === stuckAt}>
-          {showSym(s)}
-          <span class="idx">{i + 1}</span>
+    {#if tape}
+      <!-- Turingband: Kopf über dem aktuellen Feld, Bandpositionen darunter -->
+      <div class="tape tm" aria-label="Band">
+        {#each tape.cells as s, i (i)}
+          <div class="cell mono" class:head={tape.origin + i === tape.head} class:blank={obj?.kind === 'tm' && s === obj.blank}>
+            {showSym(s)}
+            <span class="idx">{tape.origin + i}</span>
+          </div>
+        {/each}
+      </div>
+    {:else}
+      <!-- Symbolband: gelesener Teil gedämpft, Kopf über dem nächsten Symbol -->
+      <div class="tapes">
+        <div class="tape" aria-label="Band">
+          {#each word as s, i (i)}
+            <div class="cell mono" class:read={i < headPos} class:head={i === headPos && !sim.atEnd} class:stuck={i === stuckAt}>
+              {showSym(s)}
+              <span class="idx">{i + 1}</span>
+            </div>
+          {/each}
+          {#if word.length === 0}
+            <div class="cell mono eps" class:read={true}>ε</div>
+          {/if}
+          <div class="cell end" class:head={headPos >= word.length && !sim.atEnd} aria-hidden="true"></div>
         </div>
-      {/each}
-      {#if word.length === 0}
-        <div class="cell mono eps" class:read={true}>ε</div>
-      {/if}
-      <div class="cell end" class:head={headPos >= word.length && !sim.atEnd} aria-hidden="true"></div>
-    </div>
+        {#if (kind === 'mealy' || kind === 'moore') && sim.step}
+          <div class="outrow" aria-label={t('sim.output')}>
+            <span class="eyebrow">{t('sim.output')}</span>
+            {#each sim.step.output ?? [] as s, i (i)}<span class="ocell mono" class:fresh={i === (sim.step.output?.length ?? 0) - 1 && sim.index > 0}>{showSym(s)}</span>{/each}
+            {#if (sim.step.output ?? []).length === 0}<span class="ocell mono muted">ε</span>{/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
+    {#if kind === 'nka' && sim.step?.stack}
+      <!-- Keller: oberstes Symbol oben -->
+      <div class="stack" aria-label={t('sim.stack')}>
+        <span class="eyebrow">{t('sim.stack')}</span>
+        <div class="stack-cells">
+          {#each sim.step.stack as s, i (i)}
+            <div class="scell mono" class:top={i === 0}>{showSym(s)}</div>
+          {/each}
+          {#if sim.step.stack.length === 0}<div class="scell mono muted">leer</div>{/if}
+        </div>
+      </div>
+    {/if}
     {#if sim.step && obj}
       <p class="explain">{explainText(obj, sim.step.explanation.key, sim.step.explanation.params)}</p>
     {:else if obj && !obj.start}
@@ -144,7 +206,66 @@
 
   {#if trace && obj}
     <div class="bottom">
-      {#if !isNea}
+      {#if kind === 'mealy' || kind === 'moore'}
+        <div class="seq">
+          <span class="label">{t('sim.output')}:</span>
+          <span class="outword mono">{(trace.output ?? []).map(showSym).join('') || 'ε'}</span>
+          <span class="note">{t(kind === 'moore' ? 'sim.moore.note' : 'sim.mealy.note')}</span>
+        </div>
+      {:else if kind === 'nka'}
+        <div class="nea">
+          <div class="tabs" role="tablist">
+            <button role="tab" aria-selected={view === 'sets'} class:on={view === 'sets'} onclick={() => (view = 'sets')}>{t('sim.history')}</button>
+            <button role="tab" aria-selected={view === 'tree'} class:on={view === 'tree'} onclick={() => (view = 'tree')}>{t('sim.configTree')}</button>
+          </div>
+          {#if view === 'sets'}
+            <table class="hist">
+              <thead><tr><th>{t('sim.readInput')}</th><th>{t('sim.state')}</th><th>{t('sim.stackContent')}</th></tr></thead>
+              <tbody>
+                {#each sim.steps as st, i (i)}
+                  <tr class:now={i === sim.index} onclick={() => go(i)}>
+                    <td class="mono">{word.slice(0, st.pos).map(showSym).join('') || 'ε'}</td>
+                    <td class="math">{stateName(obj, st.active[0] ?? '')}</td>
+                    <td class="mono">{(st.stack ?? []).map(showSym).join('')}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          {:else}
+            <NeaTree
+              nodes={trace.tree ?? []}
+              current={-1}
+              selected={sim.branch}
+              stackOf={true}
+              {onhover}
+              onselect={(id) => {
+                sim.branch = id;
+                store.simStep = 0;
+                view = 'sets';
+              }}
+            />
+          {/if}
+        </div>
+      {:else if kind === 'tm'}
+        <div class="nea">
+          <div class="counters">
+            <span><strong class="mono">{sim.index}</strong> {t('sim.steps')}</span>
+            <span><strong class="mono">{trace.visited ?? 0}</strong> {t('sim.visited')}</span>
+          </div>
+          <ol class="configs" start="0">
+            {#each sim.steps.keys() as i (i)}
+              {@const c = tmConfig(i)}
+              {#if c}
+                <li class:now={i === sim.index}>
+                  <button onclick={() => go(i)}>
+                    <span class="mono">{c.left}</span><span class="cstate math">{c.state}</span><span class="mono">{c.right}</span>
+                  </button>
+                </li>
+              {/if}
+            {/each}
+          </ol>
+        </div>
+      {:else if !isNea}
         <div class="seq">
           <span class="math label">f**(z₀, w) =</span>
           {#each trace.stateSequence ?? [] as id, i (i)}
@@ -304,11 +425,140 @@
     color: var(--bad);
     background: var(--bad-soft);
   }
+  .result.neutral {
+    color: var(--ink-2);
+    background: var(--paper-2);
+  }
   .result.warn {
     color: var(--warn);
     background: var(--warn-soft);
   }
 
+  .tapes {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .outrow {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    padding-left: 2px;
+  }
+  .outrow .eyebrow {
+    margin-right: 6px;
+  }
+  .ocell {
+    display: inline-grid;
+    place-items: center;
+    min-width: 22px;
+    height: 24px;
+    border-radius: 5px;
+    background: var(--paper-2);
+    font-size: 14px;
+  }
+  .ocell.fresh {
+    background: var(--signal);
+    color: var(--signal-ink);
+  }
+  .muted {
+    color: var(--ink-3);
+  }
+  .tape.tm .cell.blank {
+    color: var(--ink-3);
+  }
+  .stack {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .stack-cells {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+  }
+  .scell {
+    display: grid;
+    place-items: center;
+    min-width: 28px;
+    height: 32px;
+    margin-right: -1.5px;
+    border: 1.5px solid var(--ink-2);
+    background: var(--sheet);
+    font-size: 15px;
+  }
+  .scell.top {
+    border-color: var(--signal);
+    box-shadow: inset 0 3px 0 var(--signal);
+    z-index: 1;
+  }
+  .outword {
+    font-size: 16px;
+    letter-spacing: 0.08em;
+  }
+  .note {
+    margin-left: 12px;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .hist {
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .hist th {
+    padding: 2px 14px 4px 0;
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--ink-3);
+    text-align: left;
+  }
+  .hist td {
+    padding: 2px 14px 2px 0;
+    border-top: 1px solid var(--rule);
+    cursor: pointer;
+  }
+  .hist tr.now td {
+    background: var(--signal-soft);
+  }
+  .counters {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--ink-3);
+  }
+  .counters strong {
+    color: var(--ink);
+    font-size: 15px;
+  }
+  .configs {
+    margin: 0;
+    padding: 0 0 0 34px;
+    columns: 3 220px;
+    font-size: 13px;
+  }
+  .configs li {
+    break-inside: avoid;
+    color: var(--ink-3);
+  }
+  .configs button {
+    border: 0;
+    background: transparent;
+    padding: 1px 4px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  .configs li.now button {
+    background: var(--signal-soft);
+  }
+  .cstate {
+    margin: 0 3px;
+    padding: 0 3px;
+    border-radius: 3px;
+    background: var(--paper-2);
+    font-size: 14px;
+  }
   .middle {
     display: flex;
     align-items: center;

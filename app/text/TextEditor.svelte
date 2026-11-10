@@ -22,8 +22,21 @@
   const fromModel = Annotation.define<boolean>();
 
   // Hervorhebung der Textsprache. Zustandsnamen kursiv wie im Graphen.
-  const KEYWORDS = new Set(['alphabet', 'states', 'start', 'accept', 'layout']);
-  const KINDS = new Set(['dea', 'nea']);
+  const KEYWORDS = new Set([
+    'alphabet',
+    'states',
+    'start',
+    'accept',
+    'layout',
+    'ausgabealphabet',
+    'out',
+    'keller',
+    'kelleralphabet',
+    'bandalphabet',
+    'blank',
+    'reject',
+  ]);
+  const KINDS = new Set(['dea', 'nea', 'mealy', 'moore', 'nka', 'tm']);
   const language = StreamLanguage.define<{ inLabel: boolean; afterKind: boolean }>({
     startState: () => ({ inLabel: false, afterKind: false }),
     token(stream, st) {
@@ -47,13 +60,14 @@
       }
       if (stream.match(/^\\./u)) return 'escape';
       if (stream.match(/^<[\p{L}\p{N}_]+>/u)) return 'string';
+      if (stream.match('->')) return 'operator';
       if (stream.match(/^-(?!>)/)) {
         st.inLabel = true;
         return 'operator';
       }
       if (stream.match(/^[{}]/)) return 'brace';
       if (stream.match(/^@-?\d+(\.\d+)?,-?\d+(\.\d+)?/)) return 'number';
-      const word = stream.match(/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'-]*/u) as RegExpMatchArray | null;
+      const word = stream.match(/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'−-]*/u) as RegExpMatchArray | null;
       if (word) {
         const w = word[0];
         if (KINDS.has(w)) {
@@ -134,7 +148,7 @@
       // Modellwarnungen (z. B. fehlende DEA-Übergänge) an der Kopfzeile des Objekts zeigen.
       let w = 0;
       for (const o of objects) {
-        const head = text.search(new RegExp(`^\\s*(dea|nea)\\s+${o.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'm'));
+        const head = text.search(new RegExp(`^\\s*(dea|nea|mealy|moore|nka|tm)\\s+${o.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'm'));
         for (const d of validate(o)) {
           w++;
           const from = head < 0 ? 0 : head + (text.slice(head).match(/^\s*/)?.[0].length ?? 0);

@@ -55,9 +55,9 @@ function checkObject(o: unknown, path: string): void {
     tids.add(tr.id as string);
     check(isStr(tr.from) && ids.has(tr.from), `${p}.from: unknown state`);
     check(isStr(tr.to) && ids.has(tr.to), `${p}.to: unknown state`);
-    if (obj.kind === 'dea') check(isStr(tr.label), `${p}.label: string expected`);
-    else check(Array.isArray(tr.label) && tr.label.every(isStr), `${p}.label: string[] expected`);
   });
+  const reason = (spec as NonNullable<typeof spec>).checkJson(obj, ids);
+  check(reason === null, `${path}.${reason ?? ''}`);
 }
 
 export function fromJSON(json: string): { doc?: Document; diagnostics: Diagnostic[] } {

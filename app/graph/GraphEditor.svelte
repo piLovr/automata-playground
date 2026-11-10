@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { edit, autoLayout, freshName, type FormalObject, type Point, type StateId, type Word } from '../../core/index';
+  import { edit, autoLayout, freshName, type FormalObject, type Point, type StateId } from '../../core/index';
   import { store, edgeKey } from '../lib/store.svelte';
   import { sim } from '../lib/sim.svelte';
-  import { labelInput, parseLabels, showWord } from '../lib/format';
+  import { editLabels, parseLabelsFor, showLabel, LABEL_HINT, LABEL_HELP } from '../lib/labels';
   import { t } from '../i18n';
   import {
     STATE_R,
@@ -40,12 +40,18 @@
   /** Offene Eingabe direkt im Graphen: Umbenennen oder Beschriftung. */
   type Inline =
     | { type: 'rename'; id: StateId; value: string }
+    | { type: 'output'; id: StateId; value: string }
     | { type: 'label'; from: StateId; to: StateId; value: string; isNew: boolean };
   let inline = $state<Inline | null>(null);
   let inlineError = $state('');
 
   const obj = $derived(store.obj);
-  const isDea = $derived(obj?.kind === 'dea');
+  const kind = $derived(obj?.kind ?? 'dea');
+  /** Typen mit akzeptierenden Zuständen (Mealy/Moore haben stattdessen Ausgaben). */
+  const hasAccept = $derived(kind !== 'mealy' && kind !== 'moore');
+  /** Kellerautomat und TM: Beschriftungen untereinander statt durch Komma. */
+  const stacked = $derived(kind === 'nka' || kind === 'tm');
+  const rejectSet = $derived(new Set(obj?.kind === 'tm' ? obj.reject : []));
   const byId = $derived(new Map((obj?.states ?? []).map((s) => [s.id, s])));
   const acceptSet = $derived(new Set(obj?.accept ?? []));
   const selStates = $derived(new Set(store.selStates));
@@ -76,9 +82,8 @@
         g = { key, from: tr.from, to: tr.to, labels: [], fired: false };
         map.set(key, g);
       }
-      const w: Word = Array.isArray(tr.label) ? tr.label : [tr.label as string];
       const fired = sim.fired.has(tr.id);
-      g.labels.push({ id: tr.id, text: showWord(w), fired });
+      g.labels.push({ id: tr.id, text: showLabel(obj.kind, tr.label), fired });
       if (fired) g.fired = true;
     }
     return [...map.values()];
@@ -105,7 +110,9 @@
     return groups.map((g) => {
       if (g.from === g.to) return { g, geo: selfLoop(pos(g.from), loopDir.get(g.from) ?? -Math.PI / 2) };
       const both = keys.has(edgeKey(g.to, g.from));
-      const text = g.labels.reduce((n, l) => n + [...l.text].length, 0) + (g.labels.length - 1) * 2;
+      const text = stacked
+        ? Math.max(...g.labels.map((l) => [...l.text].length))
+        : g.labels.reduce((n, l) => n + [...l.text].length, 0) + (g.labels.length - 1) * 2;
       return { g, geo: edgeBetween(pos(g.from), pos(g.to), both ? 26 : 0, STATE_R, text * 8.4) };
     });
   });
@@ -329,10 +336,10 @@
   }
 
   function labelText(o: FormalObject, from: StateId, to: StateId): string {
-    return o.transitions
-      .filter((x) => x.from === from && x.to === to)
-      .map((x) => labelInput(Array.isArray(x.label) ? x.label : [x.label as string]))
-      .join(', ');
+    return editLabels(
+      o.kind,
+      o.transitions.filter((x) => x.from === from && x.to === to).map((x) => x.label),
+    );
   }
 
   function openLabel(from: StateId, to: StateId): void {
@@ -360,7 +367,7 @@
     if (cur.type === 'rename') {
       const name = cur.value.trim();
       if (name && name !== byId.get(cur.id)?.name) {
-        if (!/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'-]*$/u.test(name)) {
+        if (!/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'−-]*$/u.test(name)) {
           inlineError = 'Erlaubt: Buchstaben, Ziffern, _ + \' und - (nicht am Anfang)';
           return;
         }
@@ -369,17 +376,23 @@
       inline = null;
       return;
     }
-    const { labels, error } = parseLabels(cur.value);
+    if (cur.type === 'output') {
+      const raw = cur.value.trim();
+      const w = raw === '' ? [] : raw.length === 1 ? [raw] : null;
+      if (w === null) {
+        inlineError = 'Die Ausgabe ist genau ein Symbol (oder leer).';
+        return;
+      }
+      store.update((o) => (o.kind === 'moore' ? edit.setOutput(o, cur.id, w[0] ?? null) : o));
+      inline = null;
+      return;
+    }
+    const { labels, error } = parseLabelsFor(kind, cur.value);
     if (error) {
       inlineError = error;
       return;
     }
-    if (isDea && labels.some((l) => l.length !== 1)) {
-      inlineError = 'Ein DEA-Übergang liest genau ein Symbol (ε und Wörter nur im NEA).';
-      return;
-    }
-    const value = isDea ? labels.map((l) => l[0]!) : labels;
-    store.update((o) => edit.setEdgeLabels(o, cur.from, cur.to, value as never));
+    store.update((o) => edit.setEdgeLabels(o, cur.from, cur.to, labels as never));
     inline = null;
   }
 
@@ -407,8 +420,22 @@
     store.update((o) => edit.setStart(o, o.start === id ? null : id));
   }
 
+  export function toggleReject(): void {
+    if (obj?.kind !== 'tm' || store.selStates.length === 0) return;
+    const allOn = store.selStates.every((id) => rejectSet.has(id));
+    store.update((o) => store.selStates.reduce((acc, id) => (acc.kind === 'tm' ? edit.setRejecting(acc, id, !allOn) : acc), o));
+  }
+
+  export function editOutput(): void {
+    const id = store.selStates[0];
+    if (obj?.kind !== 'moore' || !id) return;
+    const s = obj.states.find((x) => x.id === id);
+    inline = { type: 'output', id, value: s?.out ?? '' };
+    inlineError = '';
+  }
+
   export function toggleAccept(): void {
-    if (!obj || store.selStates.length === 0) return;
+    if (!obj || !hasAccept || store.selStates.length === 0) return;
     const allOn = store.selStates.every((id) => acceptSet.has(id));
     store.update((o) => store.selStates.reduce((acc, id) => edit.setAccepting(acc, id, !allOn), o));
   }
@@ -465,6 +492,8 @@
     else if (k === 'k') store.tool = 'edge';
     else if (k === 's') toggleStart();
     else if (k === 'a') toggleAccept();
+    else if (k === 'r') toggleReject();
+    else if (k === 'o') editOutput();
     else if (k === 'l') layout();
     else if (k === '0') fit();
     else if (k === '+' || k === '=') zoom(1.2);
@@ -493,7 +522,7 @@
 
   const inlineAnchor = $derived.by((): Point | null => {
     if (!inline) return null;
-    if (inline.type === 'rename') return toScreen(add(pos(inline.id), { x: 0, y: STATE_R + 22 }));
+    if (inline.type === 'rename' || inline.type === 'output') return toScreen(add(pos(inline.id), { x: 0, y: STATE_R + 22 }));
     const g = geometry.find((x) => x.g.from === (inline as { from: string }).from && x.g.to === (inline as { to: string }).to);
     if (g) return toScreen(g.geo.label);
     return toScreen(pos(inline.from));
@@ -577,6 +606,8 @@
       <!-- Kanten -->
       {#each geometry as { g, geo } (g.key)}
         {@const selected = selEdges.has(g.key)}
+        {@const side = g.from === g.to ? geo.label.x - pos(g.from).x : 0}
+        {@const anchor = side > 20 ? 'start' : side < -20 ? 'end' : 'middle'}
         <g
           class="edge"
           class:selected
@@ -591,9 +622,17 @@
           <path class="hit" d={geo.path} />
           <path class="line" d={geo.path} />
           <path class="head" d={arrowHead(geo.tip, geo.dir)} />
-          <text class="label mono" x={geo.label.x} y={geo.label.y} text-anchor="middle" dominant-baseline="central">
-            {#each g.labels as l, i (l.id)}{#if i > 0}<tspan class="sep">,&#8239;</tspan>{/if}<tspan class:on={l.fired}>{l.text}</tspan>{/each}
-          </text>
+          {#if stacked}
+            {@const up = g.from === g.to && geo.label.y < pos(g.from).y - 20}
+            {@const first = up ? -(g.labels.length - 1) * 1.3 : -((g.labels.length - 1) * 1.3) / 2}
+            <text class="label mono" x={geo.label.x} y={geo.label.y} text-anchor={anchor} dominant-baseline="central">
+              {#each g.labels as l, i (l.id)}<tspan x={geo.label.x} dy="{i === 0 ? first : 1.3}em" class:on={l.fired}>{l.text}</tspan>{/each}
+            </text>
+          {:else}
+            <text class="label mono" x={geo.label.x} y={geo.label.y} text-anchor={anchor} dominant-baseline="central">
+              {#each g.labels as l, i (l.id)}{#if i > 0}<tspan class="sep">,&#8239;</tspan>{/if}<tspan class:on={l.fired}>{l.text}</tspan>{/each}
+            </text>
+          {/if}
         </g>
       {/each}
 
@@ -621,6 +660,7 @@
           class:selected={selStates.has(s.id)}
           class:active
           class:accepting={acceptSet.has(s.id)}
+          class:rejecting={rejectSet.has(s.id)}
           class:hl={highlight.has(s.id)}
           class:target={drag?.type === 'edge' && hoverState === s.id}
           transform="translate({p.x} {p.y})"
@@ -630,10 +670,24 @@
           {#if selStates.has(s.id)}<circle class="sel-ring" r={STATE_R + 7} />{/if}
           {#if active}<circle class="halo" r={STATE_R + 9} />{/if}
           <circle class="body" r={STATE_R} />
-          {#if acceptSet.has(s.id)}<circle class="inner" r={STATE_R - ACCEPT_GAP} />{/if}
-          <text class="name" text-anchor="middle" dominant-baseline="central" font-size={fontFor(s.name)}
-            >{parts.base}{#if parts.sub}<tspan class="subscript" dy="0.32em" font-size="0.66em">{parts.sub}</tspan>{/if}</text
-          >
+          {#if hasAccept && acceptSet.has(s.id)}<circle class="inner" r={STATE_R - ACCEPT_GAP} />{/if}
+          {#if rejectSet.has(s.id)}
+            <!-- F−: innerer Ring gestrichelt, dazu ein Querstrich – nicht nur über Farbe unterscheidbar -->
+            <circle class="inner reject" r={STATE_R - ACCEPT_GAP} />
+            <path class="reject-bar" d="M{-STATE_R * 0.42},{STATE_R * 0.52} H{STATE_R * 0.42}" />
+          {/if}
+          {#if obj?.kind === 'moore'}
+            {@const out = (s as { out?: string }).out}
+            <text class="name" text-anchor="middle" dominant-baseline="central" y="-7" font-size={Math.min(16, fontFor(s.name))}
+              >{parts.base}{#if parts.sub}<tspan class="subscript" dy="0.32em" font-size="0.66em">{parts.sub}</tspan>{/if}</text
+            >
+            <path class="out-rule" d="M{-STATE_R * 0.55},3 H{STATE_R * 0.55}" />
+            <text class="out mono" class:missing={out === undefined} text-anchor="middle" dominant-baseline="central" y="13">{out ?? '?'}</text>
+          {:else}
+            <text class="name" text-anchor="middle" dominant-baseline="central" font-size={fontFor(s.name)}
+              >{parts.base}{#if parts.sub}<tspan class="subscript" dy="0.32em" font-size="0.66em">{parts.sub}</tspan>{/if}</text
+            >
+          {/if}
           {#if sim.incomplete.has(s.id)}
             <g class="warn" transform="translate({STATE_R * 0.72} {-STATE_R * 0.72})">
               <title>Übergänge fehlen</title>
@@ -668,6 +722,7 @@
       </div>
       <p class="empty-title">{t('canvas.empty.title')}</p>
       <p class="empty-body">{t('canvas.empty.body')}</p>
+      <p class="empty-body hint">{t(`kind.${kind}.long`)}: {LABEL_HELP[kind]}</p>
     </div>
   {/if}
 
@@ -678,10 +733,21 @@
         <svg viewBox="0 0 16 16" width="14" height="14"><path d="M1 8h9" /><path d="M10 4.5 14 8l-4 3.5z" class="fill" /></svg>
         {t('state.start')}
       </button>
-      <button class="fb" class:on={acceptSet.has(id)} onclick={toggleAccept} title="{t('state.accept')} (A)">
-        <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="6.5" /><circle cx="8" cy="8" r="3.8" /></svg>
-        {t('state.accept')}
-      </button>
+      {#if hasAccept}
+        <button class="fb" class:on={acceptSet.has(id)} onclick={toggleAccept} title="{t('state.accept')} (A)">
+          <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="6.5" /><circle cx="8" cy="8" r="3.8" /></svg>
+          {t(kind === 'tm' ? 'state.acceptTm' : 'state.accept')}
+        </button>
+      {/if}
+      {#if kind === 'tm'}
+        <button class="fb" class:on={rejectSet.has(id)} onclick={toggleReject} title="{t('state.reject')} (R)">
+          <svg viewBox="0 0 16 16" width="14" height="14"><circle cx="8" cy="8" r="6.5" /><path d="M5 8h6" /></svg>
+          {t('state.reject')}
+        </button>
+      {/if}
+      {#if kind === 'moore'}
+        <button class="fb" onclick={editOutput} title="{t('state.output')} (O)">{t('state.output')}</button>
+      {/if}
       <button class="fb" onclick={editSelection} title="{t('state.rename')} (F2)">{t('state.rename')}</button>
       <button class="fb danger" onclick={deleteSelection} title="{t('state.delete')} (Entf)" aria-label={t('state.delete')}>
         <svg viewBox="0 0 16 16" width="14" height="14"><path d="M4 4l8 8M12 4l-8 8" /></svg>
@@ -705,7 +771,8 @@
         class:invalid={!!inlineError}
         use:focusInput={inline.value}
         bind:value={inline.value}
-        placeholder={inline.type === 'label' ? t(isDea ? 'edge.placeholder.dea' : 'edge.placeholder.nea') : ''}
+        placeholder={inline.type === 'label' ? LABEL_HINT[kind] : inline.type === 'output' ? '0' : ''}
+        title={inline.type === 'label' ? LABEL_HELP[kind] : ''}
         aria-label={inline.type === 'label' ? t('edge.edit') : t('state.rename')}
         oninput={() => (inlineError = '')}
         onkeydown={(e) => {
@@ -717,9 +784,13 @@
           if (inline && !inlineError) commitInline();
         }}
       />
-      {#if inline.type === 'label' && !isDea}
-        <button class="eps" tabindex="-1" onmousedown={(e) => e.preventDefault()} onclick={() => inline && (inline.value += inline.value.trim() ? ', ε' : 'ε')}>ε</button>
+      {#if inline.type === 'label' && (kind === 'nea' || kind === 'nka')}
+        <button class="eps" tabindex="-1" onmousedown={(e) => e.preventDefault()} onclick={() => inline && (inline.value += 'ε')}>ε</button>
       {/if}
+      {#if inline.type === 'label' && kind === 'tm'}
+        <button class="eps" tabindex="-1" onmousedown={(e) => e.preventDefault()} onclick={() => inline && (inline.value += '□')}>□</button>
+      {/if}
+      {#if inline.type === 'label'}<div class="inline-help">{LABEL_HELP[kind]}</div>{/if}
       {#if inlineError}<div class="inline-error">{inlineError}</div>{/if}
     </div>
   {/if}
@@ -920,6 +991,11 @@
     margin: 0;
     max-width: 34ch;
   }
+  .empty-body.hint {
+    max-width: 46ch;
+    margin-top: 8px;
+    font-size: 12.5px;
+  }
   .e-line,
   .e-state {
     fill: none;
@@ -985,7 +1061,7 @@
     align-items: flex-start;
   }
   .inline input {
-    width: 150px;
+    width: 190px;
     height: 32px;
     padding: 0 10px;
     border: 1.5px solid var(--select);
@@ -1009,6 +1085,44 @@
     border-radius: 8px;
     background: var(--sheet);
     font-family: var(--font-mono);
+  }
+  .inline-help {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 320px;
+    padding: 5px 9px;
+    border-radius: 7px;
+    background: var(--ink);
+    color: var(--paper);
+    font-size: 11.5px;
+    pointer-events: none;
+  }
+  .state .inner.reject {
+    stroke-dasharray: 4 3;
+  }
+  .state .reject-bar {
+    stroke: var(--ink);
+    stroke-width: 1.6;
+  }
+  .state .out-rule {
+    stroke: var(--rule-2);
+    stroke-width: 1;
+  }
+  .state .out {
+    font-size: 12.5px;
+    fill: var(--ink-2);
+    pointer-events: none;
+  }
+  .state .out.missing {
+    fill: var(--warn);
+  }
+  .state.active .out,
+  .state.active .reject-bar {
+    fill: var(--signal-ink);
+    stroke: var(--signal-ink);
   }
   .inline-error {
     position: absolute;

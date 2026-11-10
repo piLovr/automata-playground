@@ -1,0 +1,22 @@
+# Skript 4.9: Kellerautomat für Palindrome gerader Länge
+nka Palindrom {
+  alphabet a b
+  keller *
+  states zin zout z+ z−
+  start zin
+  accept z+
+  zin, *, a -> zin, a*
+  zin, *, b -> zin, b*
+  zin, a, a -> zin, aa
+  zin, a, b -> zin, ba
+  zin, b, a -> zin, ab
+  zin, b, b -> zin, bb
+  zin, a, ε -> zout, a
+  zin, b, ε -> zout, b
+  zout, a, a -> zout, ε
+  zout, a, b -> z−, ε
+  zout, b, a -> z−, ε
+  zout, b, b -> zout, ε
+  zout, *, ε -> z+, *
+  layout zin@0,0 zout@280,0 z+@560,0 z−@280,190
+}

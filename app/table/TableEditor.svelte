@@ -4,9 +4,12 @@
   import { sim } from '../lib/sim.svelte';
   import { showSym, showWord, splitUnescaped } from '../lib/format';
   import { t } from '../i18n';
+  import RowTable from './RowTable.svelte';
 
   const obj = $derived(store.obj);
-  const isDea = $derived(obj?.kind === 'dea');
+  /** Deterministische Tabelle Z × X: DEA, Mealy, Moore. */
+  const isDea = $derived(obj?.kind === 'dea' || obj?.kind === 'mealy' || obj?.kind === 'moore');
+  const isMealy = $derived(obj?.kind === 'mealy');
 
   /** Vom Nutzer angelegte Wortspalten (NEA), die noch keine Kante haben. */
   let extraWords = $state<Word[]>([]);
@@ -19,7 +22,7 @@
   const columns = $derived.by((): Word[] => {
     if (!obj) return [];
     const cols: Word[] = obj.alphabet.map((a) => [a]);
-    if (obj.kind === 'dea') return cols;
+    if (obj.kind !== 'nea') return cols;
     const seen = new Set(cols.map(wordKey));
     const out: Word[] = [[]];
     seen.add(wordKey([]));
@@ -44,14 +47,23 @@
     return obj?.states.find((s) => s.id === id)?.name ?? '?';
   }
 
+  function matches(o: FormalObject, label: unknown, w: Word): boolean {
+    if (o.kind === 'nea') return wordKey(label as Word) === wordKey(w);
+    if (o.kind === 'mealy') return w.length === 1 && (label as { in: Sym }).in === w[0];
+    return w.length === 1 && label === w[0];
+  }
+
   function cellTargets(o: FormalObject, from: StateId, w: Word): StateId[] {
-    return o.transitions
-      .filter((x) => x.from === from && (o.kind === 'dea' ? w.length === 1 && x.label === w[0] : wordKey(x.label as Word) === wordKey(w)))
-      .map((x) => x.to);
+    return o.transitions.filter((x) => x.from === from && matches(o, x.label, w)).map((x) => x.to);
   }
 
   function cellText(from: StateId, w: Word): string {
-    return obj ? cellTargets(obj, from, w).map(nameOf).join(', ') : '';
+    if (!obj) return '';
+    if (obj.kind === 'mealy') {
+      const tr = obj.transitions.find((x) => x.from === from && matches(obj, x.label, w));
+      return tr ? `${nameOf(tr.to)} / ${showSym(tr.label.out)}` : '';
+    }
+    return cellTargets(obj, from, w).map(nameOf).join(', ');
   }
 
   /** Namen in IDs übersetzen; unbekannte Namen werden als neue Zustände angelegt. */
@@ -70,8 +82,12 @@
   }
 
   function setCell(from: StateId, w: Word, raw: string): void {
+    if (obj?.kind === 'mealy') {
+      setMealyCell(from, w[0]!, raw);
+      return;
+    }
     const names = splitUnescaped(raw.replace(/[{}]/g, '')).map((s) => s.trim());
-    if (!names.every((n) => /^[\p{L}\p{N}_+'][\p{L}\p{N}_+'-]*$/u.test(n))) {
+    if (!names.every((n) => /^[\p{L}\p{N}_+'][\p{L}\p{N}_+'−-]*$/u.test(n))) {
       store.notify(`Ungültiger Zustandsname in „${raw}"`, 'error');
       return;
     }
@@ -82,9 +98,44 @@
     store.update((o) => {
       const r = resolve(o, names);
       const next =
-        r.o.kind === 'dea' ? edit.setDeaTarget(r.o, from, w[0]!, r.ids[0] ?? null) : edit.setNeaTargets(r.o, from, w, r.ids);
+        r.o.kind === 'nea'
+          ? edit.setNeaTargets(r.o, from, w, r.ids)
+          : r.o.kind === 'dea' || r.o.kind === 'moore'
+            ? edit.setDeaTarget(r.o as never, from, w[0]!, r.ids[0] ?? null)
+            : r.o;
       return withLayout(next);
     });
+  }
+
+  /** Mealy-Zelle „z' / y“; leer löscht den Übergang. */
+  function setMealyCell(from: StateId, input: Sym, raw: string): void {
+    const text = raw.trim();
+    if (text === '') {
+      store.update((o) => (o.kind === 'mealy' ? edit.setMealyCell(o, from, input, null) : o));
+      return;
+    }
+    const parts = splitUnescaped(text, '/');
+    const name = parts[0]?.trim() ?? '';
+    const out = parts[1] !== undefined ? literalSymbol(parts[1]) : null;
+    if (parts.length !== 2 || out === null || !/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'−-]*$/u.test(name)) {
+      store.notify('Erwartet: Zielzustand / Ausgabesymbol, z. B. B / 1', 'error');
+      return;
+    }
+    store.update((o) => {
+      if (o.kind !== 'mealy') return o;
+      const r = resolve(o, [name]);
+      return withLayout(edit.setMealyCell(r.o as typeof o, from, input, { to: r.ids[0]!, out }));
+    });
+  }
+
+  function setOut(id: StateId, raw: string): void {
+    const v = raw.trim();
+    const sym = v === '' ? null : literalSymbol(v);
+    if (v !== '' && sym === null) {
+      store.notify('Die Ausgabe ist genau ein Symbol.', 'error');
+      return;
+    }
+    store.update((o) => (o.kind === 'moore' ? edit.setOutput(o, id, sym) : o));
   }
 
   function literalSymbol(raw: string): Sym | null {
@@ -124,7 +175,11 @@
 
   function removeSymbol(sym: Sym): void {
     store.update((o) => {
-      const ids = o.transitions.filter((x) => (o.kind === 'dea' ? x.label === sym : (x.label as Word).includes(sym))).map((x) => x.id);
+      const ids = o.transitions
+        .filter((x) =>
+          o.kind === 'nea' ? (x.label as Word).includes(sym) : o.kind === 'mealy' ? (x.label as { in: Sym }).in === sym : x.label === sym,
+        )
+        .map((x) => x.id);
       return edit.setAlphabet(edit.removeTransitions(o, ids), o.alphabet.filter((a) => a !== sym));
     });
   }
@@ -132,7 +187,7 @@
   function addRow(): void {
     if (!obj) return;
     const name = newState.trim() || freshName(obj.states.map((s) => s.name), 'z');
-    if (!/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'-]*$/u.test(name)) {
+    if (!/^[\p{L}\p{N}_+'][\p{L}\p{N}_+'−-]*$/u.test(name)) {
       store.notify(`„${name}" ist kein gültiger Zustandsname.`, 'error');
       return;
     }
@@ -168,7 +223,9 @@
   const activeSet = $derived(sim.active);
 </script>
 
-{#if obj}
+{#if obj && (obj.kind === 'nka' || obj.kind === 'tm')}
+  <RowTable />
+{:else if obj}
   <div class="wrap">
     <div class="scroller">
       <table>
@@ -185,6 +242,7 @@
                 {/if}
               </th>
             {/each}
+            {#if obj.kind === 'moore'}<th class="col gcol"><span class="math">g</span></th>{/if}
             <th class="add-col">
               <input
                 class="mono"
@@ -203,7 +261,7 @@
             {@const isStart = obj.start === s.id}
             {@const isAcc = obj.accept.includes(s.id)}
             <tr class:selected={store.selStates.includes(s.id)} class:active={activeSet.has(s.id)}>
-              <th class="row">
+              <th class="row"><div class="rowin">
                 <button
                   class="mark"
                   class:on={isStart}
@@ -212,14 +270,14 @@
                   aria-pressed={isStart}
                   onclick={() => store.update((o) => edit.setStart(o, isStart ? null : s.id))}>→</button
                 >
-                <button
+                {#if obj.kind !== 'mealy' && obj.kind !== 'moore'}<button
                   class="mark"
                   class:on={isAcc}
                   title={t('state.accept')}
                   aria-label="{t('state.accept')}: {s.name}"
                   aria-pressed={isAcc}
                   onclick={() => store.update((o) => edit.setAccepting(o, s.id, !isAcc))}>✱</button
-                >
+                >{/if}
                 <input
                   class="name math"
                   value={s.name}
@@ -228,28 +286,40 @@
                   onkeydown={commitOnEnter}
                   onchange={(e) => renameRow(s.id, e.currentTarget.value, e.currentTarget)}
                 />
-              </th>
+              </div></th>
               {#each columns as w (wordKey(w))}
                 {@const v = cellText(s.id, w)}
                 <td class:missing={isDea && v === ''}>
                   <input
-                    style:width={isDea ? undefined : `${Math.max(4, [...v].length + 2)}ch`}
+                    style:width={isDea && !isMealy ? undefined : `${Math.max(4, [...v].length + 2)}ch`}
                     class="cell math"
                     value={v}
-                    placeholder={isDea ? '–' : '∅'}
+                    placeholder={isMealy ? 'z / y' : isDea ? '–' : '∅'}
                     title={t(isDea ? 'table.cellHint.dea' : 'table.cellHint.nea')}
                     aria-label="{s.name}, {showWord(w)}"
-                    list="state-names"
+                    list={isMealy ? undefined : 'state-names'}
                     onkeydown={commitOnEnter}
                     onchange={(e) => setCell(s.id, w, e.currentTarget.value)}
                   />
                 </td>
               {/each}
+              {#if obj.kind === 'moore'}
+                <td class="gcell">
+                  <input
+                    class="cell mono"
+                    value={(s as { out?: string }).out ?? ''}
+                    placeholder="?"
+                    aria-label="g({s.name})"
+                    onkeydown={commitOnEnter}
+                    onchange={(e) => setOut(s.id, e.currentTarget.value)}
+                  />
+                </td>
+              {/if}
               <td class="filler"></td>
             </tr>
           {/each}
           <tr class="add-row">
-            <th class="row">
+            <th class="row"><div class="rowin">
               <input
                 class="name math"
                 bind:value={newState}
@@ -257,7 +327,7 @@
                 aria-label={t('table.addState')}
                 onkeydown={(e) => e.key === 'Enter' && addRow()}
               />
-            </th>
+            </div></th>
             <td colspan={columns.length + 1}></td>
           </tr>
         </tbody>
@@ -266,7 +336,7 @@
         {#each obj.states as s (s.id)}<option value={s.name}></option>{/each}
       </datalist>
     </div>
-    <p class="legend">{t('table.legend')}</p>
+    <p class="legend">{t(obj.kind === 'mealy' ? 'table.legend.mealy' : obj.kind === 'moore' ? 'table.legend.moore' : 'table.legend')}</p>
   </div>
 {/if}
 
@@ -284,7 +354,6 @@
     padding: 14px 16px 6px;
   }
   table {
-    width: 100%;
     border-collapse: separate;
     border-spacing: 0;
     font-size: 15px;
@@ -359,10 +428,17 @@
     width: 90px;
   }
 
-  .row {
+  .row,
+  .corner {
+    width: 1%;
+    white-space: nowrap;
+  }
+  .rowin {
     display: flex;
     align-items: center;
     gap: 2px;
+  }
+  .row {
     padding-right: 10px;
     position: sticky;
     left: 0;
@@ -428,6 +504,10 @@
   td.missing {
     background: repeating-linear-gradient(135deg, transparent 0 5px, var(--warn-soft) 5px 6px);
   }
+  .gcol,
+  .gcell {
+    border-left: 1.5px solid var(--ink);
+  }
   .col,
   td:not(.filler) {
     width: 60px;
@@ -444,8 +524,8 @@
     font-weight: 650;
   }
   .add-row input.name {
-    width: 140px;
-    margin-left: 46px;
+    width: 100px;
+    margin-left: 22px;
     font-size: 14px;
     font-family: var(--font-ui);
     font-style: normal;

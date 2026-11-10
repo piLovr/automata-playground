@@ -1,0 +1,11 @@
+# Mealy-Automat: laufende Parität (nicht im Skript)
+mealy Paritaet {
+  alphabet 0 1
+  ausgabealphabet 0 1
+  start g
+  g -0/0-> g
+  g -1/1-> u
+  u -0/1-> u
+  u -1/0-> g
+  layout g@0,0 u@240,0
+}
