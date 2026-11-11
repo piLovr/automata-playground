@@ -1,3 +1,7 @@
 node_modules
 dist
 *.log
+
+# Vorlesungsskript: nur lokal, nicht öffentlich
+Skript.pdf
+*.pdf
