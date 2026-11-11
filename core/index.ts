@@ -45,3 +45,6 @@ export * from './derive/index';
 
 // Chomsky-Normalform, CYK, Earley, LR (M5)
 export * from './cfg/index';
+
+// Typ 1/0, LBA, Hierarchie, Zeit/Platz, fleißiger Biber (M6)
+export * from './m6/index';

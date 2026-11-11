@@ -500,7 +500,8 @@ describe('findDerivation (Teil A)', () => {
   });
 
   it('Typ 1 (Breitensuche): "abc" in a^n b^n c^n kürzest in 3 Schritten', () => {
-    expect(grammarType(A3).type).toBe(1);
+    expect(grammarType(A3).type).toBe(0); // CB → BC: nicht verkürzend, aber nicht Form 5.1
+    expect(grammarType(A3).nonContracting).toBe(true);
     const r = findDerivation(A3, W('abc'));
     expect(r.ok).toBe(true);
     if (r.ok) {

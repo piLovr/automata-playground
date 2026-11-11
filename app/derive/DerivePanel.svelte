@@ -12,6 +12,7 @@
     type Grammar,
     type ProcResult,
     type ProductionId,
+    type WordProblemResult,
   } from '../../core/index';
   import { store } from '../lib/store.svelte';
   import { runner } from '../lib/runner.svelte';
@@ -69,16 +70,37 @@
     selected = null;
   }
 
+  let maxLength = $state(8);
   async function search(): Promise<void> {
     const w = parseInputWord(target);
     if (!w) return store.notify(t('error.word'), 'error');
     message = '';
+    const ws = showWordIn(g.nonterminals, w);
+    if (!type2) {
+      // Typ 0/1: exakt bei nicht verkürzenden Grammatiken, sonst nur „bis zur Grenze nicht gefunden“ (5.13)
+      const out = await runner.run<ProcResult<WordProblemResult>>(t('derive.searching'), {
+        fn: 'wordProblem',
+        sources: [$state.snapshot(g) as Grammar],
+        word: w,
+        maxLength: Math.max(maxLength, w.length),
+        opts: {},
+      });
+      if (out.status !== 'done') return;
+      if (!out.value.ok) return void (message = t('derive.limitHit'));
+      const r = out.value.result;
+      if (r.verdict === 'derivable' && r.derivation) {
+        derivation = r.derivation;
+        message = t('derive.foundAny', { n: r.derivation.steps.length });
+      } else if (r.verdict === 'notDerivable') message = t('derive.decidedNo', { w: ws, n: r.maxLength });
+      else message = r.limitHit === 'steps' ? t('derive.unknownSteps', { w: ws, n: r.explored }) : t('derive.unknown', { w: ws, n: r.maxLength });
+      return;
+    }
     const out = await runner.run<ProcResult<Derivation>>(t('derive.searching'), { fn: 'findDerivation', sources: [$state.snapshot(g) as Grammar], word: w, opts: {} });
     if (out.status !== 'done') return;
     if (out.value.ok) {
       derivation = out.value.result;
       message = t('derive.found', { n: out.value.result.steps.length });
-    } else message = out.value.diagnostics.length ? t('derive.limitHit') : t('derive.notDerivable', { w: showWordIn(g.nonterminals, w) });
+    } else message = out.value.diagnostics.length ? t('derive.limitHit') : t('derive.notDerivable', { w: ws });
   }
 </script>
 
@@ -137,6 +159,9 @@
       <div class="search">
         <input class="mono" bind:value={target} placeholder={t('derive.target')} aria-label={t('derive.target')} onkeydown={(e) => e.key === 'Enter' && search()} />
         <button class="btn" onclick={search} disabled={!!runner.busy || target.trim() === ''}>{t('derive.search')}</button>
+        {#if !type2 && !grammarType(g).nonContracting}
+          <label class="maxlen">{t('derive.maxLength')} <input class="mono" type="number" min="1" max="30" bind:value={maxLength} /></label>
+        {/if}
       </div>
       {#if message}<p class="msg">{message}</p>{/if}
     </div>
@@ -282,6 +307,16 @@
   }
   .step:hover {
     background: var(--paper-2);
+  }
+  .maxlen {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  .maxlen input {
+    width: 56px;
   }
   .search {
     display: flex;

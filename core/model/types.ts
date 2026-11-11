@@ -99,6 +99,8 @@ export type TM = AutomatonBase<'tm', TmLabel> & {
   blank: Sym;
   /** F− */
   reject: StateId[];
+  /** Linear beschränkter Automat (5.21): nur die n Eingabefelder und je ein Feld links und rechts. */
+  bounded?: boolean;
 };
 
 export type Automaton = DEA | NEA | Mealy | Moore | NKA | TM;
@@ -364,8 +366,9 @@ export interface Diagnostic {
 // ---------------------------------------------------------------------------
 // Simulation: der vollständige Lauf als Daten; die Oberfläche blättert nur.
 
-/** done: Mealy/Moore haben das ganze Wort gelesen (kein Akzeptanzbegriff). */
-export type SimResult = 'accepted' | 'rejected' | 'stuck' | 'limit' | 'done';
+/** done: Mealy/Moore haben das ganze Wort gelesen (kein Akzeptanzbegriff).
+ *  bound: LBA hat das Fenster aus n + 2 Feldern verlassen (weder akzeptiert noch abgelehnt). */
+export type SimResult = 'accepted' | 'rejected' | 'stuck' | 'limit' | 'done' | 'bound';
 
 /** Ausschnitt eines Turingbands; Bandpositionen sind ganze Zahlen, Eingabe beginnt bei 0. */
 export interface TapeView {
@@ -375,6 +378,8 @@ export interface TapeView {
   cells: Sym[];
   /** Bandposition des Kopfs. */
   head: number;
+  /** LBA: erste und letzte erlaubte Bandposition (−1 und n). */
+  bounds?: [number, number];
 }
 
 export interface Explanation {
@@ -527,10 +532,14 @@ export interface GrammarTypeInfo {
     /** Höchster Typ, den diese Produktion für sich erfüllt. */
     type: 0 | 1 | 2 | 3;
     /** Begründungsschlüssel, Texte in der Oberfläche. */
-    reason: 'rightLinear' | 'contextFree' | 'nonShrinking' | 'startEpsilon' | 'shrinking';
+    /** contextSensitive: Form uXv → uwv mit w ≠ ε (5.1); nonShrinking: |links| ≤ |rechts|, aber nicht
+     *  diese Form (Typ 0, beschreibt aber dieselbe Sprachklasse wie Typ 1). */
+    reason: 'rightLinear' | 'contextFree' | 'contextSensitive' | 'nonShrinking' | 'startEpsilon' | 'shrinking';
   }[];
   /** Typ 1 nur wegen der Sonderregel S → ε (S auf keiner rechten Seite), 5.1. */
   startEpsilonRule: boolean;
+  /** Keine Produktion verkürzt (außer S → ε nach 5.1): Wortproblem exakt entscheidbar. */
+  nonContracting: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -721,4 +730,101 @@ export interface LrRunRow {
   stack: (number | Sym)[];
   rest: Word;
   action: LrAction | { kind: 'error' } | null;
+}
+
+// ---------------------------------------------------------------------------
+// Typ 1 und Typ 0, LBA, Hierarchie, Zeit/Platz, fleißiger Biber (M6, Kapitel 5)
+
+/** Wortproblem bzw. Ableitungssuche für beliebige Grammatiken. */
+export interface WordProblemResult {
+  /** notDerivable nur, wenn exakt entschieden (Grammatik nicht verkürzend, Suche vollständig). */
+  verdict: 'derivable' | 'notDerivable' | 'unknown';
+  derivation: Derivation | null;
+  /** true: Grammatik nicht verkürzend, Satzformen bis |w| vollständig durchsucht. */
+  exact: boolean;
+  /** Benutzte Längengrenze für Satzformen. */
+  maxLength: number;
+  /** Anzahl untersuchter Satzformen. */
+  explored: number;
+  /** Warum unknown: Schrittlimit oder Längengrenze. */
+  limitHit: 'steps' | 'length' | null;
+}
+
+export interface WordProblemOptions {
+  /** Nur für verkürzende Grammatiken: höchste Satzformlänge. Standard |w| + 4. */
+  maxLength?: number;
+  /** Höchstzahl erzeugter Satzformen. Standard 200000. */
+  maxSteps?: number;
+}
+
+/** Stufe der Chomsky-Hierarchie (5.25). */
+export type HierarchyLevel = 3 | 2 | 1 | 0;
+
+export interface HierarchyPlacement {
+  /** null: beschreibt keine Sprache (Mealy, Moore). */
+  level: HierarchyLevel | null;
+  /** Begründungsschlüssel für die Oberfläche. */
+  reason:
+    | 'dea' | 'nea' | 'regex' | 'egrep' | 'menge' | 'grammar3'
+    | 'nka' | 'grammar2'
+    | 'egrepBackref' | 'grammar1' | 'lba'
+    | 'grammar0' | 'tm'
+    | 'transducer';
+  /** true: die Sprache liegt sicher in dieser Stufe und das Tool weiß, dass sie in keiner kleineren
+   *  liegen muss (nur Typ 3); false: „liegt mindestens hier“. */
+  exact: boolean;
+}
+
+/** Zeit- und Platzbedarf einer TM je Eingabelänge (5.20). */
+export interface TmCostRow {
+  n: number;
+  /** Anzahl ausgeführter Wörter dieser Länge. */
+  words: number;
+  /** Davon mit Halt (F+, F−, stuck oder LBA-Grenze); die übrigen erreichten das Schrittlimit. */
+  halted: number;
+  /** Maxima über die haltenden Wörter; null, wenn keines hielt. */
+  maxSteps: number | null;
+  maxVisited: number | null;
+  /** Ein Wort mit maxSteps. */
+  worstWord: Word | null;
+}
+
+export interface TmCostOptions {
+  /** Alle Wörter über X bis zu dieser Länge (Standard 6), sofern words fehlt. */
+  maxLen?: number;
+  words?: Word[];
+  stepLimit?: number;
+  /** Höchstzahl Wörter je Länge (Stichprobe der ersten in Längen-lexikographischer Ordnung). */
+  perLength?: number;
+}
+
+/** Fleißiger Biber (5.40): n Nichtendzustände A, B, … und Endzustand Z über {□, 1}. */
+export interface BeaverOptions {
+  n: 1 | 2 | 3 | 4;
+  /** Schritte, nach denen eine Maschine als „noch nicht gehalten“ gilt. */
+  stepLimit?: number;
+}
+
+export interface BeaverMachine {
+  tm: TM;
+  ones: number;
+  steps: number;
+}
+
+export interface BeaverResult {
+  n: number;
+  stepLimit: number;
+  /** Aufgezählte Maschinen (Baum-Normalform, nur erreichbare Übergänge). */
+  enumerated: number;
+  halted: number;
+  /** Nachweislich ohne Halt: eine Konfiguration hat sich exakt wiederholt. */
+  provenLoop: number;
+  /** Nach stepLimit Schritten noch nicht gehalten und keine Wiederholung gefunden. */
+  undecided: number;
+  /** Höchste Einsenzahl beim Halt unter den haltenden Maschinen. */
+  best: BeaverMachine | null;
+  /** Längste Laufzeit unter den haltenden Maschinen. */
+  longest: BeaverMachine | null;
+  /** false: abgebrochen (Abbruch-Knopf); Zahlen gelten dann nur für die bis dahin aufgezählten. */
+  complete: boolean;
 }

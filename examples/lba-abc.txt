@@ -1,0 +1,69 @@
+# Eigenes Beispiel (nicht im Skript): LBA für 0^k 1^k 2^k (k >= 0), nutzt nur die Felder -1 … n
+# Vorprüfung 0*1*2*, dann pro Runde: erste 0 -> X, erste 1 -> Y, erste 2 -> Z; zurück nach links.
+# Nach der letzten Runde: keine unmarkierte 1 oder 2 mehr -> akzeptieren.
+tm LBA_abc {
+  alphabet 0 1 2
+  blank □
+  states p0 p1 p2 back m0 f1 f2 chk f+ f-
+  start p0
+  accept f+
+  reject f-
+  lba
+  p0, 0 -> p0, 0, R
+  p0, 1 -> p1, 1, R
+  p0, 2 -> p2, 2, R
+  p0, X -> f-, X, N
+  p0, Y -> f-, Y, N
+  p0, Z -> f-, Z, N
+  p0, □ -> back, □, L
+  p1, 0 -> f-, 0, N
+  p1, 1 -> p1, 1, R
+  p1, 2 -> p2, 2, R
+  p1, X -> f-, X, N
+  p1, Y -> f-, Y, N
+  p1, Z -> f-, Z, N
+  p1, □ -> back, □, L
+  p2, 0 -> f-, 0, N
+  p2, 1 -> f-, 1, N
+  p2, 2 -> p2, 2, R
+  p2, X -> f-, X, N
+  p2, Y -> f-, Y, N
+  p2, Z -> f-, Z, N
+  p2, □ -> back, □, L
+  back, 0 -> back, 0, L
+  back, 1 -> back, 1, L
+  back, 2 -> back, 2, L
+  back, X -> back, X, L
+  back, Y -> back, Y, L
+  back, Z -> back, Z, L
+  back, □ -> m0, □, R
+  m0, 0 -> f1, X, R
+  m0, 1 -> f-, 1, N
+  m0, 2 -> f-, 2, N
+  m0, X -> m0, X, R
+  m0, Y -> chk, Y, R
+  m0, Z -> chk, Z, R
+  m0, □ -> f+, □, N
+  f1, 0 -> f1, 0, R
+  f1, 1 -> f2, Y, R
+  f1, 2 -> f-, 2, N
+  f1, X -> f1, X, R
+  f1, Y -> f1, Y, R
+  f1, Z -> f-, Z, N
+  f1, □ -> f-, □, N
+  f2, 0 -> f-, 0, N
+  f2, 1 -> f2, 1, R
+  f2, 2 -> back, Z, L
+  f2, X -> f-, X, N
+  f2, Y -> f2, Y, R
+  f2, Z -> f2, Z, R
+  f2, □ -> f-, □, N
+  chk, 0 -> f-, 0, N
+  chk, 1 -> f-, 1, N
+  chk, 2 -> f-, 2, N
+  chk, X -> chk, X, R
+  chk, Y -> chk, Y, R
+  chk, Z -> chk, Z, R
+  chk, □ -> f+, □, N
+  layout p0@0,0 p1@240,0 p2@480,0 back@0,150 m0@240,150 f1@480,150 f2@720,150 chk@240,300 f+@720,300 f-@960,300
+}

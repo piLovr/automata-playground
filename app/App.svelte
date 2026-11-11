@@ -22,6 +22,8 @@
   import StepStage from './procs/StepStage.svelte';
   import StepDeck from './procs/StepDeck.svelte';
   import Workspace from './workspace/Workspace.svelte';
+  import Hierarchy from './hier/Hierarchy.svelte';
+  import CostPanel from './sim/CostPanel.svelte';
   import { procs } from './lib/procs.svelte';
   import { hl } from './lib/hl.svelte';
   import { statesOf } from './lib/corr';
@@ -64,7 +66,7 @@
   const aut = $derived(store.aut);
   /** Reiter je Objektart; Ausdruck und Grammatik haben keine Tabelle. */
   const tabs = $derived(
-    (aut ? ['table', 'text', 'batch', 'lang', 'procs'] : ['text', 'batch', 'lang', 'procs']) as (typeof store.panel)[],
+    (aut ? (aut.kind === 'tm' ? ['table', 'text', 'batch', 'lang', 'cost', 'procs'] : ['table', 'text', 'batch', 'lang', 'procs']) : ['text', 'batch', 'lang', 'procs']) as (typeof store.panel)[],
   );
   const panel = $derived(tabs.includes(store.panel) ? store.panel : 'text');
   const NEW_KINDS: FormalKind[] = ['dea', 'nea', 'regex', 'grammatik', 'menge', 'egrep', 'mealy', 'moore', 'nka', 'tm'];
@@ -293,6 +295,7 @@
     <div class="viewmode" role="group" aria-label={t('ws.mode')}>
       <button aria-pressed={store.view === 'single'} onclick={() => store.setView('single')}>{t('ws.single')}</button>
       <button aria-pressed={store.view === 'workspace'} onclick={() => (procs.close(), store.setView('workspace'))}>{t('ws.workspace')}</button>
+      <button aria-pressed={store.view === 'hierarchy'} onclick={() => (procs.close(), store.setView('hierarchy'))}>{t('ws.hierarchy')}</button>
     </div>
 
     <div class="actions">
@@ -346,6 +349,8 @@
 
   {#if store.view === 'workspace'}
   <div class="ws-area"><Workspace /></div>
+  {:else if store.view === 'hierarchy'}
+  <div class="ws-area"><Hierarchy /></div>
   {:else}
   <!-- Zeichenfläche -->
   <main class="stage">
@@ -526,6 +531,12 @@
             <dd>{set(obj.reject.map((id) => stateName(obj, id)))}</dd>
           {/if}
         </dl>
+        {#if obj.kind === 'tm'}
+          <label class="lba" title={t('tm.lba.hint')}>
+            <input type="checkbox" checked={!!obj.bounded} onchange={(e) => store.updateAny((x) => (x.kind === 'tm' ? { ...x, bounded: e.currentTarget.checked || undefined } : x))} />
+            {t('tm.lba')}
+          </label>
+        {/if}
       </section>
     {/if}
     {#if obj}
@@ -548,6 +559,8 @@
           <ProcPanel />
         {:else if panel === 'lang'}
           <LangPanel />
+        {:else if panel === 'cost' && obj.kind === 'tm'}
+          <CostPanel tm={obj} />
         {:else}
           <BatchPanel />
         {/if}
@@ -903,6 +916,14 @@
   .tuple {
     margin: 0 0 8px;
     font-size: 19px;
+  }
+  .lba {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--ink-2);
   }
   dl {
     display: grid;

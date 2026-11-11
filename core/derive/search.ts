@@ -15,6 +15,7 @@ import type {
   Word,
 } from '../model/types';
 import { cfProductions, cycleSet, nullableSet, productiveSet, spanTables } from './analysis';
+import { wordProblem } from '../m6/word';
 import { applicable, applyProduction, leftmostPos } from './ops';
 import { treeOf } from './tree';
 
@@ -48,6 +49,18 @@ export function findDerivation(
     const maxSteps = opts.maxSteps ?? 50000;
     const type = grammarType(g).type;
     const cf = type >= 2;
+    if (!cf) {
+      // Typ 0/1: Satzformen dürfen wachsen; die Suche steckt in wordProblem (exakt nur bei nicht verkürzenden Grammatiken)
+      const r = wordProblem(g, w, opts.maxSteps === undefined ? {} : { maxSteps: opts.maxSteps });
+      if (!r.ok) return { ok: false, diagnostics: r.diagnostics, steps: [] };
+      const wp = r.result;
+      if (wp.verdict === 'derivable') return done(wp.derivation as Derivation);
+      if (wp.verdict === 'unknown') {
+        const what = wp.limitHit === 'steps' ? 'steps' : 'length';
+        return { ok: false, diagnostics: [limitDiag(what, what === 'steps' ? (opts.maxSteps ?? 200000) : wp.maxLength)], steps: [] };
+      }
+      return { ok: false, diagnostics: [], steps: [] };
+    }
     const S = g.start as Sym;
     const n = w.length;
     const nt = new Set(g.nonterminals);

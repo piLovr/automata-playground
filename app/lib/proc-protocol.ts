@@ -11,7 +11,10 @@ export type ProcCall =
   | { id: number; fn: 'wordsPage'; sources: FormalObject[]; maxLen: number; offset: number; limit: number; opts: Opts }
   | { id: number; fn: 'findDerivation' | 'parseTrees' | 'topDownRun' | 'bottomUpRun' | 'cyk' | 'earley'; sources: FormalObject[]; word: Word; limit?: number; opts: Opts }
   | { id: number; fn: 'lr'; sources: FormalObject[]; mode: 'LR0' | 'LALR1'; word: Word | null; opts: Opts }
-  | { id: number; fn: 'findAmbiguity'; sources: FormalObject[]; maxLen: number; limit?: number; opts: Opts };
+  | { id: number; fn: 'findAmbiguity'; sources: FormalObject[]; maxLen: number; limit?: number; opts: Opts }
+  | { id: number; fn: 'wordProblem'; sources: FormalObject[]; word: Word; maxLength?: number; opts: Opts }
+  | { id: number; fn: 'tmCost'; sources: FormalObject[]; maxLen: number; stepLimit: number; opts: Opts }
+  | { id: number; fn: 'busyBeaver'; n: 1 | 2 | 3 | 4; stepLimit: number; opts: Opts };
 
 export type ProcRequest = ProcCall extends infer C ? (C extends ProcCall ? Omit<C, 'id'> : never) : never;
 

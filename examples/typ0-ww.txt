@@ -1,0 +1,19 @@
+# Eigenes Beispiel (nicht im Skript): Typ-0-Grammatik für {ww | w in {a,b}*} (mit ε)
+# Verkürzende Produktionen: M -> ε, E -> ε. Ablauf: M-Schritte erzeugen w und Hilfszeichen,
+# A/B wandern nach rechts und werden zur zweiten Kopie, danach werden Marker gelöscht.
+grammatik Typ0_ww {
+  nichtterminale S M E A B C D
+  terminale a b
+  start S
+  S -> ME
+  M -> aMA | bMB | ε
+  AC -> CA
+  AD -> DA
+  BC -> CB
+  BD -> DB
+  AE -> CE
+  BE -> DE
+  C -> a
+  D -> b
+  E -> ε
+}

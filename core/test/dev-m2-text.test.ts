@@ -225,7 +225,11 @@ describe('Grammatik', () => {
     const t = (txt: string) => grammarType(parseDocument(txt).doc.objects[0] as Grammar);
     expect(t('grammatik G { S -> 0S | 1S | 01 }').type).toBe(3);
     expect(t('grammatik G { S -> aSb | ab }').type).toBe(2);
-    expect(t('grammatik G { S -> aSBC | aBC\n CB -> BC\n aB -> ab }').type).toBe(1);
+    // CB → BC ist nicht verkürzend, aber nicht von der Form uXv → uwv (5.1): Typ 0, Wortproblem exakt
+    const mono = t('grammatik G { S -> aSBC | aBC\n CB -> BC\n aB -> ab }');
+    expect(mono.type).toBe(0);
+    expect(mono.nonContracting).toBe(true);
+    expect(mono.productions.map((p) => p.reason)).toEqual(['contextFree', 'contextFree', 'nonShrinking', 'contextSensitive']);
     expect(t('grammatik G { S -> ε | aSB\n SB -> BS }').startEpsilonRule).toBe(false);
     const eps = t('grammatik G { S -> ε | aTb\n aT -> aTa }');
     expect(eps.type).toBe(1);

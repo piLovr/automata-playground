@@ -13,6 +13,7 @@ export const KEYWORDS = [
   'blank',
   'reject',
   'akzeptanz',
+  'lba',
 ] as const;
 
 const SPECIAL = new Set(['-', ',', '<', '>', '#', '\\', '{', '}', 'ε']);

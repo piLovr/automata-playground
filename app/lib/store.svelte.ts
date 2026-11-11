@@ -28,8 +28,8 @@ export interface BatchRow {
 }
 
 export type Tool = 'select' | 'state' | 'edge';
-export type PanelTab = 'table' | 'text' | 'batch' | 'procs' | 'lang';
-export type ViewMode = 'single' | 'workspace';
+export type PanelTab = 'table' | 'text' | 'batch' | 'procs' | 'lang' | 'cost';
+export type ViewMode = 'single' | 'workspace' | 'hierarchy';
 export type Theme = 'auto' | 'light' | 'dark';
 
 /** Kantengruppe im Graphen: alle Übergänge from → to. */

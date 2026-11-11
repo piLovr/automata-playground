@@ -1,0 +1,15 @@
+# Eigenes Beispiel (nicht im Skript): Typ-1-Grammatik für a^k b^k c^k (k >= 1)
+# Nur Produktionen der Form uXv -> uwv (5.1). CB -> BC ist in drei solche Schritte über Y zerlegt.
+grammatik Typ1_abc {
+  nichtterminale S B C Y
+  terminale a b c
+  start S
+  S -> aSBC | aBC
+  CB -> CY
+  CY -> BY
+  BY -> BC
+  aB -> ab
+  bB -> bb
+  bC -> bc
+  cC -> cc
+}

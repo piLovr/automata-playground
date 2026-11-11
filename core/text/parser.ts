@@ -299,6 +299,10 @@ function parseBody(sc: Scanner, spec: KindSpec, name: string, braceAt: number): 
           }
           break;
         }
+        case 'lba':
+          if (extras.bounded) sc.report('syntax.duplicateStatement', { statement: word }, stmtStart, word.length);
+          extras.bounded = true;
+          break;
         case 'ausgabealphabet':
           extras.outputAlphabet = parseSymbolList(sc);
           break;

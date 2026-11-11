@@ -175,21 +175,39 @@ export function grammarType(g: Grammar): GrammarTypeInfo {
     return true;
   };
 
+  // 5.1: uXv → uwv mit u, v ∈ V*, X ∈ N, w ∈ V+
+  const contextSensitive = (p: Production): boolean => {
+    const l = p.left;
+    const r = p.right;
+    if (r.length < l.length || r.length === 0) return false;
+    for (let i = 0; i < l.length; i++) {
+      if (!N.has(l[i] as Sym)) continue;
+      const v = l.length - i - 1;
+      let ok = true;
+      for (let k = 0; k < i && ok; k++) if (l[k] !== r[k]) ok = false;
+      for (let k = 0; k < v && ok; k++) if (l[l.length - 1 - k] !== r[r.length - 1 - k]) ok = false;
+      if (ok && r.length - i - v >= 1) return true;
+    }
+    return false;
+  };
+
   const per: GrammarTypeInfo['productions'] = g.productions.map((p) => {
     if (rightLinear(p)) return { id: p.id, type: 3, reason: 'rightLinear' };
     if (p.left.length === 1 && N.has(p.left[0] as Sym)) return { id: p.id, type: 2, reason: 'contextFree' };
-    if (p.left.length <= p.right.length) return { id: p.id, type: 1, reason: 'nonShrinking' };
+    if (contextSensitive(p)) return { id: p.id, type: 1, reason: 'contextSensitive' };
     if (isStartEps(p)) return { id: p.id, type: 1, reason: 'startEpsilon' };
+    if (p.left.length <= p.right.length) return { id: p.id, type: 0, reason: 'nonShrinking' };
     return { id: p.id, type: 0, reason: 'shrinking' };
   });
 
   let type: 0 | 1 | 2 | 3;
   if (per.every((x) => x.type === 3)) type = 3;
   else if (per.every((x) => x.type >= 2)) type = 2;
-  else if (g.productions.every((p) => p.left.length <= p.right.length || isStartEps(p))) type = 1;
+  else if (g.productions.every((p) => (p.right.length > 0 && contextSensitive(p)) || isStartEps(p))) type = 1;
   else type = 0;
   const startEpsilonRule = type === 1 && g.productions.some(isStartEps);
-  return { type, productions: per, startEpsilonRule };
+  const nonContracting = g.productions.every((p) => (p.right.length > 0 && p.left.length <= p.right.length) || isStartEps(p));
+  return { type, productions: per, startEpsilonRule, nonContracting };
 }
 
 // ---------------------------------------------------------------------------

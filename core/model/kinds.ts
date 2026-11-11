@@ -36,6 +36,8 @@ export interface Extras {
   acceptBy: 'empty' | null;
   blank: Sym | null;
   reject: StateId[];
+  /** tm: Kopfzeile `lba`. */
+  bounded?: boolean;
   /** Moore: g(Zustand) = Symbol. */
   out: Map<StateId, Sym>;
 }
@@ -370,7 +372,7 @@ export function parseMove(text: string): -1 | 0 | 1 | null {
 const tmSpec: KindSpec = {
   kind: 'tm',
   keyword: 'tm',
-  keywords: ['bandalphabet', 'blank', 'reject'],
+  keywords: ['bandalphabet', 'blank', 'reject', 'lba'],
   lineForm: true,
   empty: (name) => ({
     kind: 'tm',
@@ -398,13 +400,14 @@ const tmSpec: KindSpec = {
     }
     const input = base.alphabet ?? symbols.filter((s) => s !== blank);
     const tape = extras.tapeAlphabet ?? [...new Set([...input, blank, ...symbols])];
-    return { ...o, alphabet: input, tapeAlphabet: tape } as Automaton;
+    return { ...o, alphabet: input, tapeAlphabet: tape, ...(extras.bounded ? { bounded: true } : {}) } as Automaton;
   },
   printHead(obj) {
     if (obj.kind !== 'tm') return mismatch();
     const out: string[] = [];
     if (obj.tapeAlphabet.length > 0) out.push('bandalphabet ' + obj.tapeAlphabet.map(printSymbol).join(' '));
     out.push('blank ' + printSymbol(obj.blank));
+    if (obj.bounded === true) out.push('lba');
     return out;
   },
   tailRefs(obj) {
@@ -422,6 +425,7 @@ const tmSpec: KindSpec = {
   checkJson(obj, ids) {
     if (!isStrArr(obj.tapeAlphabet)) return 'tapeAlphabet: string[] expected';
     if (!isStr(obj.blank)) return 'blank: string expected';
+    if (obj.bounded !== undefined && typeof obj.bounded !== 'boolean') return 'bounded: boolean expected';
     if (!isStrArr(obj.reject) || !obj.reject.every((r) => ids.has(r))) return 'reject: state ids expected';
     return jsonLabels(
       obj,

@@ -226,12 +226,63 @@
     "word": "abbba"
   },
   {
+    "id": "b5-41",
+    "file": "b5-41.txt",
+    "chapter": 5,
+    "ref": "5.41",
+    "title": "Fleißiger Biber mit 6 Nichtendzuständen (Tabelle S. 66)",
+    "note": "UNKLAR: Zellformat (Folgezustand, Schreibsymbol, Richtung) im Skript nicht erklärt; gelesen wie in der Tabelle notiert. Im PDF steht □ als „2“ (Bandalphabet {2, 1} in 5.40). Die Schrittzahl steht nicht im Skript; nach 20000 Schritten noch nicht gehalten, daher ohne Eingabewort."
+  },
+  {
     "id": "tm-inc",
     "file": "tm-inc.txt",
     "chapter": 5,
     "ref": "",
     "title": "Turingmaschine: Binärzahl + 1 (nicht im Skript)",
     "word": "1011"
+  },
+  {
+    "id": "biber-2",
+    "file": "biber-2.txt",
+    "chapter": 5,
+    "ref": "",
+    "title": "Fleißiger Biber mit 2 Nichtendzuständen (Bestwert, nicht im Skript)",
+    "note": "Bestwert BB(2) = 4 Einsen in 6 Schritten. Eingabealphabet {1}; der Lauf startet auf leerem Band (Eingabewort ε)."
+  },
+  {
+    "id": "biber-3",
+    "file": "biber-3.txt",
+    "chapter": 5,
+    "ref": "",
+    "title": "Fleißiger Biber mit 3 Nichtendzuständen (Bestwert, nicht im Skript)",
+    "note": "Bestwert BB(3) = 6 Einsen in 14 Schritten (Lin/Rado). Eingabealphabet {1}; der Lauf startet auf leerem Band (Eingabewort ε)."
+  },
+  {
+    "id": "typ1-abc",
+    "file": "typ1-abc.txt",
+    "chapter": 5,
+    "ref": "",
+    "title": "Typ-1-Grammatik für aᵏbᵏcᵏ (nicht im Skript)",
+    "word": "aabbcc",
+    "note": "Sprache aus 5.4 (dort ohne Grammatik). Nur Produktionen der Form uXv → uwv; CB → BC ist in drei solche Schritte über Y zerlegt."
+  },
+  {
+    "id": "typ0-ww",
+    "file": "typ0-ww.txt",
+    "chapter": 5,
+    "ref": "",
+    "title": "Typ-0-Grammatik für {ww | w ∈ {a,b}*} (nicht im Skript)",
+    "word": "abab",
+    "note": "Enthält verkürzende Produktionen (M → ε, E → ε), daher Typ 0. Die Sprache enthält ε."
+  },
+  {
+    "id": "lba-abc",
+    "file": "lba-abc.txt",
+    "chapter": 5,
+    "ref": "",
+    "title": "LBA für 0ᵏ1ᵏ2ᵏ (nicht im Skript)",
+    "word": "001122",
+    "note": "Sprache aus 5.4, LBA-Modell aus 5.21; die Maschine ist eine eigene Konstruktion. Benutzt nur die Felder −1 … n; die Randfelder sind □ (5.21 nennt keine Randmarken)."
   },
   {
     "id": "b6-32",

@@ -62,9 +62,9 @@
   const stuckAt = $derived(trace?.result === 'stuck' && sim.atEnd && !isNea ? (sim.step?.pos ?? 0) - 1 : -1);
 
   const resultTone = $derived(
-    !trace ? '' : trace.result === 'accepted' ? 'ok' : trace.result === 'limit' ? 'warn' : trace.result === 'done' ? 'neutral' : 'bad',
+    !trace ? '' : trace.result === 'accepted' ? 'ok' : trace.result === 'limit' || trace.result === 'bound' ? 'warn' : trace.result === 'done' ? 'neutral' : 'bad',
   );
-  const GLYPH = { accepted: '✓', rejected: '✗', stuck: '⊘', limit: '…', done: '■' } as const;
+  const GLYPH = { accepted: '✓', rejected: '✗', stuck: '⊘', limit: '…', done: '■', bound: '⇥' } as const;
 
   /** TM: Band des aktuellen Schritts mit einem Blank Rand links und rechts. */
   const tape = $derived.by(() => {
@@ -72,7 +72,7 @@
     if (obj?.kind !== 'tm' || !tv) return null;
     const blank = obj.blank;
     const cells = [blank, ...tv.cells, blank];
-    return { cells, origin: tv.origin - 1, head: tv.head };
+    return { cells, origin: tv.origin - 1, head: tv.head, bounds: tv.bounds ?? null };
   });
 
   /** Konfiguration der TM als Text „u z v“ (Zustand vor dem Feld unter dem Kopf). */
@@ -155,7 +155,14 @@
       <!-- Turingband: Kopf über dem aktuellen Feld, Bandpositionen darunter -->
       <div class="tape tm" aria-label="Band">
         {#each tape.cells as s, i (i)}
-          <div class="cell mono" class:head={tape.origin + i === tape.head} class:blank={obj?.kind === 'tm' && s === obj.blank}>
+          {@const p = tape.origin + i}
+          <div
+            class="cell mono"
+            class:head={p === tape.head}
+            class:blank={obj?.kind === 'tm' && s === obj.blank}
+            class:out={!!tape.bounds && (p < tape.bounds[0] || p > tape.bounds[1])}
+            class:edge={!!tape.bounds && (p === tape.bounds[0] || p === tape.bounds[1])}
+          >
             {showSym(s)}
             <span class="idx">{tape.origin + i}</span>
           </div>
@@ -466,6 +473,15 @@
   }
   .tape.tm .cell.blank {
     color: var(--ink-3);
+  }
+  /* LBA: außerhalb der n + 2 Felder schraffiert, Randfelder gestrichelt */
+  .tape.tm .cell.out {
+    background: repeating-linear-gradient(135deg, var(--paper-2) 0 4px, transparent 4px 8px);
+    opacity: 0.7;
+  }
+  .tape.tm .cell.edge {
+    outline: 1.5px dashed var(--ink-3);
+    outline-offset: -3px;
   }
   .stack {
     display: flex;

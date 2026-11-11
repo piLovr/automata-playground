@@ -51,6 +51,7 @@
       <span class="badge t{info.type}">{t('grammar.type', { n: info.type })}</span>
       <span>{t(`grammar.type${info.type}.desc`)}</span>
       {#if info.startEpsilonRule}<span class="note">{t('grammar.startEps')}</span>{/if}
+      {#if info.type === 0 && info.nonContracting}<span class="note">{t('grammar.nonContracting')}</span>{/if}
     </p>
   </header>
 

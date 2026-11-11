@@ -14,7 +14,11 @@ import {
   separatingWord,
   topDownRun,
   wordsPage,
+  wordProblem,
+  tmCost,
+  busyBeaver,
   type DEA,
+  type TM,
   type Grammar,
 } from '../../core/index';
 import type { ProcCall } from './proc-protocol';
@@ -50,5 +54,11 @@ export function execute(call: ProcCall, onProgress?: (done: number) => void): un
     }
     case 'findAmbiguity':
       return findAmbiguity(call.sources[0] as Grammar, { maxLen: call.maxLen, maxNodes: call.limit });
+    case 'wordProblem':
+      return wordProblem(call.sources[0] as Grammar, call.word, { maxLength: call.maxLength });
+    case 'tmCost':
+      return tmCost(call.sources[0] as TM, { maxLen: call.maxLen, stepLimit: call.stepLimit });
+    case 'busyBeaver':
+      return busyBeaver({ n: call.n, stepLimit: call.stepLimit }, (done) => onProgress?.(done));
   }
 }
