@@ -87,3 +87,5 @@ class Runner {
 export const runner = new Runner();
 /** Eigener Worker für den Sprach-Explorer, damit er laufende Verfahren nicht abbricht. */
 export const explorer = new Runner();
+/** Kleine Wortprobe in der Leiste unten (eigener Worker, damit sie den Explorer nicht abbricht). */
+export const sampler = new Runner();

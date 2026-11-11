@@ -371,6 +371,7 @@ export const de = {
   'expr.sample': 'Wörter der Sprache bis Länge 6',
   'expr.emptyLang': 'keine (bis Länge 6)',
   'expr.notType3': 'Nur für Typ-3-Grammatiken',
+  'expr.broken': 'Erst den Fehler im Muster beheben',
 
   // Verfahren
   'method.nea2dea': 'NEA → DEA',
