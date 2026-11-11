@@ -30,6 +30,7 @@ export const METHODS: Record<MethodId, MethodInfo> = {
   moore2mealy: { ref: '' },
   egrep2regex: { ref: '3.25, 7.4' },
   sprachop: { ref: '1.6–1.9' },
+  grammar2nka: { ref: '4.27' },
   menge2dea: { ref: '' },
 };
 
@@ -48,6 +49,7 @@ export const METHOD_ORDER: MethodId[] = [
   'regex2grammar',
   'thompson',
   'grammar2nea',
+  'grammar2nka',
   'complement',
   'intersection',
   'union',

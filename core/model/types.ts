@@ -80,6 +80,11 @@ export type NKA = AutomatonBase<'nka', NkaLabel> & {
   stackAlphabet: Sym[];
   /** Anfangskellersymbol y0. */
   y0: Sym;
+  /**
+   * Akzeptanz: 'final' (Standard, 4.5) über Endzustand; 'empty' (nicht im Skript): Eingabe
+   * gelesen und nur noch y0 im Keller, Zustand egal. Fehlt das Feld, gilt 'final'.
+   */
+  acceptBy?: 'final' | 'empty';
 };
 
 /** Turingmaschine: f : Z × Y → Z × Y × {−1, 0, 1}. accept = F+, reject = F−. alphabet = Eingabealphabet X. */
@@ -227,7 +232,8 @@ export type MethodId =
   | 'moore2mealy' // nicht im Skript
   | 'egrep2regex' // 7.4: Regex (Kap. 3) → regulärer Ausdruck (Kap. 2)
   | 'sprachop' // Sprachrechner (1.6–1.9): Ergebnis eines Ausdrucks über Mengen
-  | 'menge2dea'; // endliche Sprache → DEA über den Präfixbaum (nicht im Skript)
+  | 'menge2dea' // endliche Sprache → DEA über den Präfixbaum (nicht im Skript)
+  | 'grammar2nka'; // 4.27: Typ-2-Grammatik → Kellerautomat (top-down)
 
 /** Verweis auf ein Element eines Objekts (Hervorhebung, Entsprechungen). */
 export type ElemRef =
@@ -319,6 +325,11 @@ export type DiagnosticCode =
   | 'lang.syntax' // params: { found: string; expected: string[]; col }
   | 'lang.truncated' // Warnung: params: { upTo: number }  L* bzw. L+ nur bis Länge upTo
   | 'lang.tooLarge' // params: { limit: number }  mehr Wörter als erlaubt
+  // Ableitungen (Kapitel 4)
+  | 'derive.notApplicable' // params: { production, pos }  linke Seite steht nicht an dieser Stelle
+  | 'derive.notType2' // Bäume, Linksableitung, Analyse nur für Typ 2
+  | 'derive.limit' // Warnung: params: { what: 'nodes' | 'steps' | 'length'; limit: number }
+  | 'algo.notType2' // params: { productionIds }
   // Verfahren
   | 'algo.wrongKind' // params: { method: MethodId; kind: FormalKind }
   | 'algo.incomplete' // params: { pairs: { state: StateId; symbol: Sym }[] }  DEA nicht total (2.33, 2.90)
@@ -536,4 +547,83 @@ export interface TikzOptions {
   standalone?: boolean;
   /** Zentimeter je 100 Pixel Layout (Standard 1.6). */
   scale?: number;
+}
+
+// ---------------------------------------------------------------------------
+// Ableitungen, Ableitungsbäume, Analyse (M4, Kapitel 4)
+
+export interface DerivStep {
+  production: ProductionId;
+  /** Stelle (Symbolindex) in der vorigen Satzform, an der die linke Seite beginnt. */
+  pos: number;
+  /** Satzform nach dem Schritt. */
+  form: Word;
+}
+
+export interface Derivation {
+  /** Ausgangssatzform (meist [S]). */
+  start: Word;
+  steps: DerivStep[];
+}
+
+/** Ableitungsbaum nach 4.19; sym null = ε-Blatt. ids sind je Baum eindeutig (Vorordnung). */
+export interface DerivTree {
+  id: number;
+  sym: Sym | null;
+  /** Bei inneren Knoten: angewandte Produktion. */
+  production?: ProductionId;
+  children: DerivTree[];
+}
+
+export interface TreesResult {
+  /** Bäume nach Knotenzahl, bei gleicher Größe in Reihenfolge der Linksableitungen. */
+  trees: DerivTree[];
+  /** Suche bis zur Grenze vollständig (es gibt keine weiteren Bäume bis maxNodes). */
+  complete: boolean;
+  /** Die Grammatik hat einen Zyklus X ⇒⁺ X, der zu w beiträgt: unendlich viele Bäume. */
+  infinite: boolean;
+}
+
+export interface AmbiguityResult {
+  /** Erstes Wort (nach Länge, dann lexikographisch) mit zwei verschiedenen Bäumen. */
+  found: { word: Word; trees: [DerivTree, DerivTree] } | null;
+  /** Bis zu dieser Länge vollständig geprüft (bei found: Länge des Worts). */
+  checkedUpTo: number;
+  /** Eine Grenze wurde erreicht; die Aussage gilt dann nur eingeschränkt. */
+  limitHit: boolean;
+}
+
+export type ParseAction =
+  | { kind: 'start' }
+  | { kind: 'produce'; production: ProductionId }
+  | { kind: 'read'; sym: Sym }
+  | { kind: 'shift'; sym: Sym }
+  | { kind: 'reduce'; production: ProductionId }
+  | { kind: 'accept' };
+
+/** Zeile wie Tabelle 4.28 (top-down) bzw. 4.34 (bottom-up). */
+export interface ParseRow {
+  /** Gelesener Teil der Eingabe. */
+  read: Word;
+  /** Noch ungelesener Rest. */
+  rest: Word;
+  state: 'z0' | 'z' | 'z+';
+  /** Kellerinhalt; top-down: oberstes Symbol vorn (links), bottom-up: oberstes Symbol hinten (rechts). */
+  stack: Word;
+  /** Aktion, die zur nächsten Zeile führt; null in der letzten Zeile. */
+  action: ParseAction | null;
+  /** Top-down: Satzform der Linksableitung = gelesen + Keller ohne y0 (4.29); bottom-up: Keller ohne y0 + Rest (4.35). */
+  form: Word;
+}
+
+export interface ParseRun {
+  accepted: boolean;
+  rows: ParseRow[];
+  /** Aus dem Lauf abgelesen: top-down Linksableitung, bottom-up Rechtsableitung (4.30, 4.36). */
+  derivation: Derivation | null;
+  tree: DerivTree | null;
+  /** Untersuchte Konfigurationen und verworfene Zweige (Nichtdeterminismus, 4.31/4.37). */
+  explored: number;
+  deadEnds: number;
+  limitHit: boolean;
 }

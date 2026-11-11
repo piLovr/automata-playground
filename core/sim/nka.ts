@@ -24,6 +24,10 @@ export function simulateNka(obj: NKA, word: Word, opts: SimOptions = {}): Trace 
     };
   }
   const accept = new Set(obj.accept);
+  const byEmpty = obj.acceptBy === 'empty';
+  // 'final': Endzustand (4.5); 'empty' (nicht im Skript): nur noch y0 im Keller, Zustand egal.
+  const isAcc = (state: StateId, st: Word): boolean =>
+    byEmpty ? st.length === 1 && st[0] === obj.y0 : accept.has(state);
   const byFrom = new Map<StateId, typeof obj.transitions>();
   for (const t of obj.transitions) {
     const l = byFrom.get(t.from) ?? [];
@@ -47,7 +51,7 @@ export function simulateNka(obj: NKA, word: Word, opts: SimOptions = {}): Trace 
   let found: TreeNode | null = null;
   let cut = false;
   let nodeLimit = false;
-  if (n === 0 && accept.has(root.state)) {
+  if (n === 0 && isAcc(root.state, root.stack ?? [])) {
     root.status = 'accepting';
     found = root;
   } else queue.push(root.id);
@@ -85,7 +89,7 @@ export function simulateNka(obj: NKA, word: Word, opts: SimOptions = {}): Trace 
           continue;
         }
         visited.add(key);
-        if (pos === n && accept.has(t.to)) {
+        if (pos === n && isAcc(t.to, st)) {
           child.status = 'accepting';
           found = child;
           break;

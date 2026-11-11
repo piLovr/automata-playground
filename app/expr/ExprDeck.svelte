@@ -1,8 +1,8 @@
 <script lang="ts">
   // Untere Leiste für Ausdruck und Grammatik: Zugehörigkeitstest für ein Wort und
   // die kürzesten Wörter der Sprache. Gerechnet wird intern über einen DEA.
-  import { accepts, validate, type ProcResult, type Word, type WordsPage } from '../../core/index';
-  import { sampler } from '../lib/runner.svelte';
+  import { accepts, grammarType, validate, type Derivation, type Grammar, type ProcResult, type Word, type WordsPage } from '../../core/index';
+  import { checker, sampler } from '../lib/runner.svelte';
   import { store } from '../lib/store.svelte';
   import { parseInputWord, showWord } from '../lib/format';
   import { t } from '../i18n';
@@ -10,7 +10,24 @@
   const obj = $derived(store.obj!);
   const word = $derived(parseInputWord(store.word));
   const broken = $derived(validate(obj).some((d) => d.severity === 'error'));
-  const verdict = $derived(word && !broken ? accepts(obj, word) : null);
+  /** Kontextfreie Grammatik (Typ 2, nicht 3): Zugehörigkeit über die Ableitungssuche im Worker. */
+  const cfg = $derived(obj.kind === 'grammatik' && grammarType(obj).type === 2);
+  let cfgVerdict = $state<boolean | 'limit' | null>(null);
+  $effect(() => {
+    const w = word;
+    if (!cfg || !w || broken) {
+      cfgVerdict = null;
+      return;
+    }
+    const g = $state.snapshot(obj) as Grammar;
+    const id = setTimeout(async () => {
+      const r = await checker.run<ProcResult<Derivation>>(t('derive.searching'), { fn: 'findDerivation', sources: [g], word: w, opts: {} });
+      if (r.status !== 'done') return;
+      cfgVerdict = r.value.ok ? true : r.value.diagnostics.length ? 'limit' : false;
+    }, 200);
+    return () => clearTimeout(id);
+  });
+  const verdict = $derived(cfg ? (cfgVerdict === 'limit' ? null : cfgVerdict) : word && !broken ? accepts(obj, word) : null);
 
   // Kurze Wortprobe im Worker über den DEA (im Hauptthread konnte z. B. [0-9] die Seite einfrieren).
   let sample = $state<Word[] | null>(null);
@@ -45,7 +62,7 @@
   </label>
   <p class="verdict" class:ok={verdict === true} class:bad={verdict === false} aria-live="polite">
     {#if verdict === null}
-      {word === null ? t('sim.wordError') : broken ? t('expr.broken') : obj.kind === 'grammatik' ? t('expr.notType3') : '—'}
+      {word === null ? t('sim.wordError') : broken ? t('expr.broken') : cfgVerdict === 'limit' ? t('expr.limit') : cfg ? '…' : obj.kind === 'grammatik' ? t('expr.notType3') : '—'}
     {:else}
       {verdict ? '✓' : '✕'} {showWord(word ?? [])} {verdict ? '∈' : '∉'} L({obj.name})
     {/if}

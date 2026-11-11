@@ -4,6 +4,8 @@ import { abort, guard, limitAbort, newRec, safeValidate } from '../algo/common';
 import { egrepAlphabet, egrepTest } from '../algo/egrep';
 import { enumerate } from '../algo/enumerate';
 import { type3Violations } from '../algo/grammarops';
+import { cfgWords } from '../derive/search';
+import { grammarType } from '../model/grammar';
 import { egrepHasBackref, parseEgrep } from '../model/egrep';
 import { simulate } from '../sim/batch';
 import type {
@@ -216,7 +218,7 @@ function isFinite3(e: Engine): boolean {
 // ---------------------------------------------------------------------------
 // Probieren (Kellerautomat, Turingmaschine, egrep mit Rückwärtsverweis, Grammatik Typ < 3)
 
-type Mode = { exact: true; dea: DEA } | { exact: false; test: (w: Word) => boolean; alphabet: Sym[]; list?: Word[] };
+type Mode = { exact: true; dea: DEA } | { exact: false; test: (w: Word) => boolean; alphabet: Sym[]; list?: Word[]; listExact?: boolean };
 
 function modeOf(o: FormalObject, maxLen: number, stepLimit: number | undefined): Mode {
   const errs = safeValidate(o).filter((d) => d.severity === 'error');
@@ -243,6 +245,11 @@ function modeOf(o: FormalObject, maxLen: number, stepLimit: number | undefined):
     }
     case 'grammatik':
       if (type3Violations(o).length > 0) {
+        if (grammarType(o).type === 2) {
+          const r = cfgWords(o, maxLen);
+          const set = new Set(r.words.map((w) => JSON.stringify(w)));
+          return { exact: false, alphabet: o.terminals, list: r.words, listExact: r.complete, test: (w) => set.has(JSON.stringify(w)) };
+        }
         const list = enumerate(o, maxLen);
         const set = new Set(list.map((w) => JSON.stringify(w)));
         return { exact: false, alphabet: o.terminals, list, test: (w) => set.has(JSON.stringify(w)) };
@@ -286,7 +293,7 @@ export function countByLength(o: FormalObject, maxLen: number, opts: { stepLimit
     for (const w of mode.list ?? candidates(mode.alphabet, maxLen)) {
       if (w.length <= maxLen && mode.test(w)) counts[w.length] = (counts[w.length] as bigint) + 1n;
     }
-    return { counts, exact: false };
+    return { counts, exact: mode.listExact === true };
   });
 }
 
@@ -338,7 +345,7 @@ export function wordsPage(
       }
       words.push(w);
     }
-    return { words, done, exact: false };
+    return { words, done, exact: mode.listExact === true };
   });
 }
 

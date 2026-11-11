@@ -7,6 +7,7 @@ import { deaToRegex, deaToRegexElim, regexToGrammar, thompson } from './regexalg
 import { deaToGrammar, grammarToNea, type3Violations } from './grammarops';
 import { egrepToRegex } from './egrep';
 import { mengeToDea } from './bridges';
+import { grammarToNka, type2Violations } from './parsing';
 import { mealyToMoore, mooreToMealy } from './mealymoore';
 
 export function applicableMethods(o: FormalObject): MethodId[] {
@@ -18,7 +19,10 @@ export function applicableMethods(o: FormalObject): MethodId[] {
     case 'regex':
       return ['regex2grammar', 'thompson'];
     case 'grammatik':
-      return type3Violations(o).length === 0 ? ['grammar2nea'] : [];
+      return [
+        ...(type3Violations(o).length === 0 ? (['grammar2nea'] as MethodId[]) : []),
+        ...(type2Violations(o).length === 0 ? (['grammar2nka'] as MethodId[]) : []),
+      ];
     case 'egrep':
       return ['egrep2regex'];
     case 'menge':
@@ -61,6 +65,8 @@ export function runMethod(method: MethodId, sources: FormalObject[], opts: ProcO
       return a.kind === 'regex' ? thompson(a, opts) : wrong(a.kind);
     case 'grammar2nea':
       return a.kind === 'grammatik' ? grammarToNea(a, opts) : wrong(a.kind);
+    case 'grammar2nka':
+      return a.kind === 'grammatik' ? grammarToNka(a, opts) : wrong(a.kind);
     case 'complement':
       return a.kind === 'dea' ? complement(a, opts) : wrong(a.kind);
     case 'reachable':

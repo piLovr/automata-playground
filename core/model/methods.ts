@@ -22,4 +22,5 @@ export const METHOD_IDS: readonly MethodId[] = [
   'egrep2regex',
   'sprachop',
   'menge2dea',
+  'grammar2nka',
 ];

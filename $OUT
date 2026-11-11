@@ -1,0 +1,36 @@
+{
+ "nka in accepted": 196,
+ "td in acc": 225,
+ "bu in acc": 164,
+ "nka out limit": 1216,
+ "td out rej": 3437,
+ "bu out limitHit": 2063,
+ "bu in limitHit": 62,
+ "nka out rejected": 2338,
+ "bu out rej": 1491,
+ "nka in limit": 30,
+ "td out limitHit": 117,
+ "td in limitHit": 1
+}
+limit grammars: 22
+grammatik R0 {
+  nichtterminale S
+  terminale a b
+  start S
+  S -> Sa | a | ε | ε | ab | a
+}
+---
+grammatik R1 {
+  nichtterminale S A B
+  terminale a b
+  start S
+  S -> SBa | AS | ε
+  A -> AAS
+}
+---
+grammatik R4 {
+  nichtterminale S
+  terminale a b
+  start S
+  S -> aba | SSb | aaa | bS
+}

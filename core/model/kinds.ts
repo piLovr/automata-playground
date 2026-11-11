@@ -32,6 +32,8 @@ export interface Extras {
   stackAlphabet: Sym[] | null;
   tapeAlphabet: Sym[] | null;
   y0: Sym | null;
+  /** nka: `akzeptanz leer`. */
+  acceptBy: 'empty' | null;
   blank: Sym | null;
   reject: StateId[];
   /** Moore: g(Zustand) = Symbol. */
@@ -288,7 +290,7 @@ const DEFAULT_BLANK = '□';
 const nkaSpec: KindSpec = {
   kind: 'nka',
   keyword: 'nka',
-  keywords: ['keller', 'kelleralphabet'],
+  keywords: ['keller', 'kelleralphabet', 'akzeptanz'],
   lineForm: true,
   empty: (name) => ({
     kind: 'nka',
@@ -306,14 +308,16 @@ const nkaSpec: KindSpec = {
   finish(base, extras) {
     const y0 = extras.y0 ?? DEFAULT_Y0;
     const o = { ...baseOf('nka', base), stackAlphabet: [y0], y0 } as unknown as Automaton;
-    const r = inferAlphabet(o, base) as Automaton & { stackAlphabet: Sym[] };
-    return extras.stackAlphabet === null ? r : { ...r, stackAlphabet: extras.stackAlphabet };
+    const r = inferAlphabet(o, base) as Automaton & { stackAlphabet: Sym[]; acceptBy?: 'empty' };
+    const r2 = extras.stackAlphabet === null ? r : { ...r, stackAlphabet: extras.stackAlphabet };
+    return extras.acceptBy === 'empty' ? { ...r2, acceptBy: 'empty' as const } : r2;
   },
   printHead(obj) {
     if (obj.kind !== 'nka') return mismatch();
     const out: string[] = [];
     if (obj.stackAlphabet.length > 0) out.push('kelleralphabet ' + obj.stackAlphabet.map(printSymbol).join(' '));
     out.push('keller ' + printSymbol(obj.y0));
+    if (obj.acceptBy === 'empty') out.push('akzeptanz leer');
     return out;
   },
   tailRefs: noRefs,
@@ -325,6 +329,7 @@ const nkaSpec: KindSpec = {
   checkJson(obj) {
     if (!isStrArr(obj.stackAlphabet)) return 'stackAlphabet: string[] expected';
     if (!isStr(obj.y0)) return 'y0: string expected';
+    if (obj.acceptBy !== undefined && obj.acceptBy !== 'final' && obj.acceptBy !== 'empty') return "acceptBy: 'final' | 'empty' expected";
     return jsonLabels(
       obj,
       (l) => isObj(l) && isStr(l.top) && (l.read === null || isStr(l.read)) && isStrArr(l.push),

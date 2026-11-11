@@ -38,12 +38,14 @@ Skript-Liste (Reihenfolge wie im Skript): Z, z0, Y, y0, X, f, F.
 - Bei gegebenen z, y: entweder f(z, y, ε) = ∅ oder für alle x ∈ X gilt f(z, y, x) = ∅.
 - Ist f(z, y, ε) = ∅: f(z, y, x) enthält für alle x ∈ X genau eine Aktion (z', v).
 - Ist f(z, y, ε) ≠ ∅: f(z, y, ε) enthält genau eine Aktion (z', v).
+- DKA ⊊ NKA: Skript-Aussage in 4.11 (Lpal nur von NKA), siehe docs/skript-notizen-m4.md.
 
 ## 4.5 Akzeptanz
 
 - Startkonfiguration: Eingabewort w, Keller enthält nur y0, Zustand z0.
 - Akzeptiert, wenn nach einigen Schritten alle Eingabesymbole gelesen sind und die Steuereinheit in einem Zustand aus F ist.
 - Bedingung zum Kellerinhalt bei Akzeptanz: nicht genannt.
+- Akzeptanz über leeren Keller: im Skript nicht definiert (nur Endzustand).
 
 ## Konfiguration und Schrittrelation
 
@@ -98,6 +100,7 @@ Verlaufstabelle für Eingabe 00001111 (Skript S. 47):
 
 - Spiegelbild wR: εR = ε, (xw)R = wR x (Definition 4.7).
 - Palindrome gerader Länge: Form wwR (4.8, nur Aufgabenstellung).
+- 4.8: Frage ohne Antwort im Skript: Form palindromer Wörter ungerader Länge.
 
 ## 4.9 Beispiel: Palindrome gerader Länge
 

@@ -194,6 +194,30 @@
     "word": "abaaaaba"
   },
   {
+    "id": "b4-15",
+    "file": "b4-15.txt",
+    "chapter": 4,
+    "ref": "4.15",
+    "title": "Grammatik mit Hilfsnichtterminalen Y0 und Y1 (kontextfrei, nicht Typ 3)"
+  },
+  {
+    "id": "b4-16",
+    "file": "b4-16.txt",
+    "chapter": 4,
+    "ref": "4.16",
+    "title": "Klammersprache: Grammatik mit ε, (S) und SS",
+    "word": "()()()",
+    "note": "Mehrdeutig: das Wort ()()() hat zwei verschiedene Ableitungsbäume (4.24)."
+  },
+  {
+    "id": "b4-24",
+    "file": "b4-24.txt",
+    "chapter": 4,
+    "ref": "4.24",
+    "title": "Eindeutige Grammatik für die Klammersprache",
+    "word": "(())()"
+  },
+  {
     "id": "b5-9",
     "file": "b5-9.txt",
     "chapter": 5,

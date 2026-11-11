@@ -89,3 +89,5 @@ export const runner = new Runner();
 export const explorer = new Runner();
 /** Kleine Wortprobe in der Leiste unten (eigener Worker, damit sie den Explorer nicht abbricht). */
 export const sampler = new Runner();
+/** Worttest der unteren Leiste (Ableitungssuche bei Typ 2), unabhängig von der Wortprobe. */
+export const checker = new Runner();

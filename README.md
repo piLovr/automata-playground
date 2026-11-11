@@ -1,6 +1,6 @@
 # Automaten-Playground
 
-Browser-Tool für formale Sprachen und Automaten. Stand: Meilenstein M3 (Sprach-Explorer, endliche Sprachen und Sprachrechner, Beispielbibliothek Kap. 1–2, Export SVG/PNG/TikZ/LaTeX); dazu egrep-Regex.
+Browser-Tool für formale Sprachen und Automaten. Stand: Meilenstein M4 (Ableitungen und -bäume, Mehrdeutigkeit, Grammatik → Kellerautomat, top-down- und bottom-up-Analyse) nach M3 (Sprach-Explorer, endliche Sprachen und Sprachrechner, Beispielbibliothek Kap. 1–2, Export SVG/PNG/TikZ/LaTeX); dazu egrep-Regex.
 
 ## Befehle
 

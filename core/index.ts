@@ -39,3 +39,6 @@ export * from './export/index';
 export { evalLang } from './lang/index';
 export { countByLength, wordsPage, outputsTable } from './explore/index';
 export { makeMenge } from './model/menge';
+
+// Ableitungen, Bäume, Mehrdeutigkeit (M4)
+export * from './derive/index';

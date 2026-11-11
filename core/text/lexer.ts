@@ -12,6 +12,7 @@ export const KEYWORDS = [
   'bandalphabet',
   'blank',
   'reject',
+  'akzeptanz',
 ] as const;
 
 const SPECIAL = new Set(['-', ',', '<', '>', '#', '\\', '{', '}', 'ε']);

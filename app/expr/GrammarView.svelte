@@ -6,14 +6,36 @@
   import { hl } from '../lib/hl.svelte';
   import { showWord } from '../lib/format';
   import GrammarText from './GrammarText.svelte';
+  import DerivePanel from '../derive/DerivePanel.svelte';
+  import TreesPanel from '../derive/TreesPanel.svelte';
+  import AnalysisPanel from '../derive/AnalysisPanel.svelte';
   import { t } from '../i18n';
 
   const g = $derived(store.obj as Grammar);
   const info = $derived(grammarType(g));
   const keys = $derived(hl.keysFor(g.name));
+
+  type Tab = 'prods' | 'derive' | 'trees' | 'parse';
+  let tab = $state<Tab>('prods');
+  const TABS: Tab[] = ['prods', 'derive', 'trees', 'parse'];
+  /** Bäume und Kellerautomaten-Analyse gibt es nur für Typ 2 und 3. */
+  const needsType2 = (x: Tab): boolean => x === 'trees' || x === 'parse';
 </script>
 
 <div class="g-stage">
+  <div class="tabs" role="tablist" aria-label={t('grammar.views')}>
+    {#each TABS as x (x)}
+      <button role="tab" aria-selected={tab === x} class:on={tab === x} disabled={needsType2(x) && info.type < 2} title={needsType2(x) && info.type < 2 ? t('grammar.needsType2') : undefined} onclick={() => (tab = x)}>{t(`grammar.tab.${x}`)}</button>
+    {/each}
+  </div>
+
+  {#if tab === 'derive'}
+    <DerivePanel {g} />
+  {:else if tab === 'trees' && info.type >= 2}
+    <TreesPanel {g} />
+  {:else if tab === 'parse' && info.type >= 2}
+    <AnalysisPanel {g} />
+  {:else}
   <header>
     <p class="eyebrow">{t('grammar.productions')}</p>
     <p class="type">
@@ -51,9 +73,33 @@
   {:else}
     <p class="empty">{t('grammar.empty')}</p>
   {/if}
+  {/if}
 </div>
 
 <style>
+  .tabs {
+    display: flex;
+    gap: 2px;
+    border-bottom: 1px solid var(--rule);
+    margin: -8px 0 0;
+  }
+  .tabs button {
+    padding: 8px 14px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    background: none;
+    color: var(--ink-2);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tabs button.on {
+    color: var(--ink);
+    border-bottom-color: var(--signal);
+  }
+  .tabs button:disabled {
+    color: var(--ink-3);
+    cursor: not-allowed;
+  }
   .g-stage {
     height: 100%;
     overflow: auto;

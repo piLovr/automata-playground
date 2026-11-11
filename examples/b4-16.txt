@@ -1,0 +1,7 @@
+# Skript 4.16: Klammergrammatik S -> ε | (S) | SS
+grammatik B4_16 {
+  nichtterminale S
+  terminale ( )
+  start S
+  S -> ε | (S) | SS
+}

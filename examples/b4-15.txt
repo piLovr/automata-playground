@@ -1,0 +1,9 @@
+# Skript 4.15: Grammatik mit Hilfsnichtterminalen Y0, Y1 (kontextfrei, nicht Typ 3)
+grammatik B4_15 {
+  nichtterminale X Y0 Y1
+  terminale 0 1
+  start X
+  X -> 0Y0 | 1Y1
+  Y0 -> X0
+  Y1 -> X1
+}

@@ -54,6 +54,10 @@ export const EXPLANATION_KEYS = [
   'proc.lang.power',
   'proc.lang.star',
   'proc.lang.plus',
+  'proc.gk.start',
+  'proc.gk.produce',
+  'proc.gk.read',
+  'proc.gk.accept',
 ] as const;
 
 export type ExplanationKey = (typeof EXPLANATION_KEYS)[number];

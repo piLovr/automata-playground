@@ -433,6 +433,13 @@
             <dd class="mono-set">{obj.states.map((s) => `${s.name}↦${s.out ?? '?'}`).join('  ') || '∅'}</dd>
           {/if}
           {#if obj.kind === 'nka'}
+            <dt>{t('nka.acceptBy')}</dt>
+            <dd>
+              <select class="sym-input" style:width="auto" value={obj.acceptBy ?? 'final'} onchange={(e) => store.update((o) => (o.kind === 'nka' ? edit.setAcceptBy(o, e.currentTarget.value as 'final' | 'empty') : o))}>
+                <option value="final">{t('nka.acceptFinal')}</option>
+                <option value="empty">{t('nka.acceptEmpty')}</option>
+              </select>
+            </dd>
             <dt>Y</dt>
             <dd class="mono-set">{set(obj.stackAlphabet.map(showSym))}</dd>
             <dt>y₀</dt>

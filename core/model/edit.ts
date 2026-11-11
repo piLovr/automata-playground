@@ -210,6 +210,13 @@ export function setY0(obj: NKA, y0: Sym): NKA {
   return { ...obj, y0, stackAlphabet: obj.stackAlphabet.includes(y0) ? obj.stackAlphabet.slice() : [...obj.stackAlphabet, y0] };
 }
 
+/** Akzeptanzart des Kellerautomaten; 'final' entfernt das Feld (Standard). */
+export function setAcceptBy(obj: NKA, mode: 'final' | 'empty'): NKA {
+  const { acceptBy: _old, ...rest } = obj;
+  void _old;
+  return mode === 'empty' ? { ...rest, acceptBy: 'empty' } : rest;
+}
+
 export function setBlank(obj: TM, blank: Sym): TM {
   return { ...obj, blank, tapeAlphabet: obj.tapeAlphabet.includes(blank) ? obj.tapeAlphabet.slice() : [...obj.tapeAlphabet, blank] };
 }

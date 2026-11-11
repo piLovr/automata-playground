@@ -79,6 +79,7 @@ class Procs {
       moore2mealy: 'Mealy',
       egrep2regex: 'R',
       sprachop: 'L',
+      grammar2nka: 'K',
     };
     let n = 1;
     while (names.includes(prefix[method] + n)) n++;

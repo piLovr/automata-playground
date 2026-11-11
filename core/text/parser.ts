@@ -250,6 +250,7 @@ function parseBody(sc: Scanner, spec: KindSpec, name: string, braceAt: number): 
     stackAlphabet: null,
     tapeAlphabet: null,
     y0: null,
+    acceptBy: null,
     blank: null,
     reject: [],
     out: new Map(),
@@ -307,6 +308,19 @@ function parseBody(sc: Scanner, spec: KindSpec, name: string, braceAt: number): 
         case 'bandalphabet':
           extras.tapeAlphabet = parseSymbolList(sc);
           break;
+        case 'akzeptanz': {
+          sc.skipInline();
+          const at = sc.i;
+          const v = sc.readStateName();
+          if (v !== 'leer') {
+            sc.report('syntax.unexpected', { found: v === '' ? sc.peek() : v, expected: ['leer'] }, at, Math.max(1, v.length));
+            sc.skipToLineEnd(true);
+            break;
+          }
+          if (extras.acceptBy !== null) sc.report('syntax.duplicateStatement', { statement: word }, stmtStart, word.length);
+          else extras.acceptBy = 'empty';
+          break;
+        }
         case 'keller':
         case 'blank': {
           sc.skipInline();
