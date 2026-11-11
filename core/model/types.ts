@@ -233,7 +233,12 @@ export type MethodId =
   | 'egrep2regex' // 7.4: Regex (Kap. 3) → regulärer Ausdruck (Kap. 2)
   | 'sprachop' // Sprachrechner (1.6–1.9): Ergebnis eines Ausdrucks über Mengen
   | 'menge2dea' // endliche Sprache → DEA über den Präfixbaum (nicht im Skript)
-  | 'grammar2nka'; // 4.27: Typ-2-Grammatik → Kellerautomat (top-down)
+  | 'grammar2nka' // 4.27: Typ-2-Grammatik → Kellerautomat (top-down)
+  | 'cnfTerminals' // 6.31 Schritt 1: Terminale auslagern
+  | 'cnfEpsilon' // 6.31 Schritt 2: ε-Produktionen entfernen (6.27/6.29)
+  | 'cnfChains' // 6.31 Schritt 3: Kettenproduktionen über M(X)
+  | 'cnfLong' // 6.31 Schritt 4: lange rechte Seiten zerlegen
+  | 'toCnf'; // 6.31: alle vier Schritte
 
 /** Verweis auf ein Element eines Objekts (Hervorhebung, Entsprechungen). */
 export type ElemRef =
@@ -330,6 +335,9 @@ export type DiagnosticCode =
   | 'derive.notType2' // Bäume, Linksableitung, Analyse nur für Typ 2
   | 'derive.limit' // Warnung: params: { what: 'nodes' | 'steps' | 'length'; limit: number }
   | 'algo.notType2' // params: { productionIds }
+  | 'cnf.notCnf' // params: { productionIds }  CYK verlangt Chomsky-Normalform
+  | 'cnf.scriptLiteral' // Warnung: wörtlich wie 6.32, Terminalproduktionen fehlen, Sprache ändert sich
+  | 'lr.conflict' // Warnung: params: { state: number; symbol: Sym; kinds: string[] }
   // Verfahren
   | 'algo.wrongKind' // params: { method: MethodId; kind: FormalKind }
   | 'algo.incomplete' // params: { pairs: { state: StateId; symbol: Sym }[] }  DEA nicht total (2.33, 2.90)
@@ -626,4 +634,91 @@ export interface ParseRun {
   explored: number;
   deadEnds: number;
   limitHit: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Chomsky-Normalform, CYK, Earley, LR (M5, Kapitel 6)
+
+export interface CnfOptions extends ProcOptions {
+  /** Schritt 4: gleiche Endstücke teilen sich ein V (wie Beispiel 6.32). Standard true. */
+  sparse?: boolean;
+  /** Schritt 3 wörtlich wie Beispiel 6.32: Terminalproduktionen werden nicht übertragen. Standard false. */
+  scriptLiteral?: boolean;
+}
+
+/** Eintrag der zweiten CYK-Darstellung (6.36/6.38): X → Y Z mit Trennstelle m, oder X → a. */
+export interface CykMark {
+  production: ProductionId;
+  /** Trennstelle m mit i < m < j; null bei X → a. */
+  split: number | null;
+}
+
+/** Zelle D[i, j] für das Teilwort w(i, j] (Trennstellen wie 6.33). */
+export interface CykCell {
+  i: number;
+  j: number;
+  nonterminals: Sym[];
+  marks: CykMark[];
+}
+
+export interface CykResult {
+  word: Word;
+  /** Alle Zellen mit 0 ≤ i < j ≤ n, nach Länge j − i, dann i. */
+  cells: CykCell[];
+  accepted: boolean;
+}
+
+export type EarleyRule = 'init' | 'lexer' | 'completer' | 'predictor';
+
+/** Item X →ᵢ v₁ • v₂ in Menge S_j (6.41). */
+export interface EarleyItem {
+  production: ProductionId;
+  dot: number;
+  /** Trennstelle i (Herkunft). */
+  origin: number;
+  rule: EarleyRule;
+  /** Auslösende Items als [Menge, Index]; Completer hat zwei. */
+  cause: [number, number][];
+}
+
+export interface EarleyResult {
+  word: Word;
+  sets: EarleyItem[][];
+  accepted: boolean;
+}
+
+/** LR-Item; production '__start' steht für S′ → ⊣ S ⊢ (6.46). */
+export interface LrItem {
+  production: ProductionId;
+  dot: number;
+  /** LALR(1)-Vorausschau (nur bei Reduktions-Items gefüllt). */
+  lookahead?: Sym[];
+}
+
+export interface LrState {
+  id: number;
+  kernel: LrItem[];
+  /** Hülle (Kern zuerst). */
+  items: LrItem[];
+}
+
+export type LrAction = { kind: 'shift'; to: number } | { kind: 'reduce'; production: ProductionId } | { kind: 'accept' };
+
+export interface LrAutomaton {
+  /** Erweiterte Grammatik mit Produktion '__start': S′ → ⊣ S ⊢. */
+  augmented: Grammar;
+  states: LrState[];
+  goto: { from: number; symbol: Sym; to: number }[];
+  /** act[z][a]: alle möglichen Aktionen (mehr als eine = Konflikt). */
+  actions: Record<number, Record<Sym, LrAction[]>>;
+  conflicts: { state: number; symbol: Sym; actions: LrAction[] }[];
+  mode: 'LR0' | 'LALR1';
+}
+
+/** Zeile eines LR-Laufs wie Tabelle 6.1. */
+export interface LrRunRow {
+  /** Kellerinhalt abwechselnd Zustand und Symbol, unten zuerst: [z0, ⊣, z1, a, z5, …]. */
+  stack: (number | Sym)[];
+  rest: Word;
+  action: LrAction | { kind: 'error' } | null;
 }

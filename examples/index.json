@@ -232,5 +232,31 @@
     "ref": "",
     "title": "Turingmaschine: Binärzahl + 1 (nicht im Skript)",
     "word": "1011"
+  },
+  {
+    "id": "b6-32",
+    "file": "b6-32.txt",
+    "chapter": 6,
+    "ref": "6.32",
+    "title": "Ausgangsgrammatik E -> E+F | F, F -> (E) | a vor der CNF-Umformung",
+    "word": "(a+a)",
+    "note": "Das Wort stammt aus 6.35, dort wird aber die CNF angewandt, die nicht in der Datei steht. Die Datei enthält nur die Ausgangsgrammatik aus 6.32."
+  },
+  {
+    "id": "b6-44",
+    "file": "b6-44.txt",
+    "chapter": 6,
+    "ref": "6.44",
+    "title": "Earley-Analyse: kleine Grammatik für das Wort abc",
+    "word": "abc"
+  },
+  {
+    "id": "b6-45",
+    "file": "b6-45.txt",
+    "chapter": 6,
+    "ref": "6.45",
+    "title": "Grammatik mit Termen E, T, F für die LR-Analyse",
+    "word": "(a+a)*a",
+    "note": "Die erweiterte Grammatik mit S' -> ⊣ E ⊢ (6.46) ist nicht enthalten."
   }
 ]

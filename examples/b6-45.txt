@@ -1,0 +1,9 @@
+# Skript 6.45: Grammatik mit Termen E, T, F für die LR-Analyse
+grammatik B6_45 {
+  nichtterminale E T F
+  terminale + * ( ) a
+  start E
+  E -> E+T | T
+  T -> T*F | F
+  F -> (E) | a
+}

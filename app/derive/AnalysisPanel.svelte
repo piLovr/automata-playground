@@ -4,7 +4,7 @@
   import type { Grammar, ParseAction, ParseRun, ProcResult, Word } from '../../core/index';
   import { store } from '../lib/store.svelte';
   import { runner } from '../lib/runner.svelte';
-  import { diagnosticText, parseInputWord, showSym, showWord } from '../lib/format';
+  import { diagnosticText, parseInputWord, showSym, showSymIn, showWordIn } from '../lib/format';
   import TreeView from './TreeView.svelte';
   import { t } from '../i18n';
 
@@ -38,7 +38,7 @@
 
   const prodText = (id: string): string => {
     const p = g.productions.find((x) => x.id === id);
-    return p ? `${showWord(p.left)} → ${showWord(p.right)}` : id;
+    return p ? `${showWordIn(g.nonterminals, p.left)} → ${showWordIn(g.nonterminals, p.right)}` : id;
   };
   function action(a: ParseAction | null): string {
     if (!a) return '';
@@ -50,7 +50,7 @@
         return prodText(a.production);
       case 'read':
       case 'shift':
-        return t('parse.read', { x: showSym(a.sym) });
+        return t('parse.read', { x: showSymIn(g.nonterminals, a.sym) });
       case 'accept':
         return t('parse.accept');
     }
@@ -90,15 +90,15 @@
               <tr class:final={r.state === 'z+'}>
                 <td class="nr">{letter(i)}</td>
                 {#if runMode === 'top'}
-                  <td class="mono">{showWord(r.read)}</td>
+                  <td class="mono">{showWordIn(g.nonterminals, r.read)}</td>
                   <td class="math">{r.state}</td>
                   <td class="mono">{stack(r.stack)}</td>
                   <td class="act">{action(r.action)}</td>
-                  <td class="mono form">{showWord(r.form)}</td>
+                  <td class="mono form">{showWordIn(g.nonterminals, r.form)}</td>
                 {:else}
                   <td class="mono">{stack(r.stack)}</td>
                   <td class="math">{r.state}</td>
-                  <td class="mono">{r.rest.length ? showWord(r.rest) : '–'}</td>
+                  <td class="mono">{r.rest.length ? showWordIn(g.nonterminals, r.rest) : '–'}</td>
                   <td class="act">{action(r.action)}</td>
                 {/if}
               </tr>
@@ -110,7 +110,7 @@
     {#if run.derivation}
       <p class="eyebrow">{runMode === 'top' ? t('parse.leftmost') : t('parse.rightmost')}</p>
       <p class="deriv mono">
-        {showWord(run.derivation.start)}{#each run.derivation.steps as st, i (i)} <span class="arrow">⇒</span> {showWord(st.form)}{/each}
+        {showWordIn(g.nonterminals, run.derivation.start)}{#each run.derivation.steps as st, i (i)} <span class="arrow">⇒</span> {showWordIn(g.nonterminals, st.form)}{/each}
       </p>
     {/if}
     {#if run.tree}

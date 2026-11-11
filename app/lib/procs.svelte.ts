@@ -36,6 +36,10 @@ class Procs {
   fullPowerset = $state(false);
   maxStates = $state(2000);
   maxExprSize = $state(50000);
+  /** CNF Schritt 4: gleiche Endstücke teilen ein V (wie 6.32). */
+  cnfSparse = $state(true);
+  /** CNF Schritt 3 wörtlich wie 6.32 (ohne übertragene Terminalproduktionen). */
+  cnfScriptLiteral = $state(false);
 
   /** Letztes Ergebnis eines Äquivalenztests bzw. trennenden Worts (Anzeige im Reiter). */
   equiv = $state<{ a: string; b: string; res: EquivalenceResult } | null>(null);
@@ -49,7 +53,10 @@ class Procs {
       simplify: this.simplify,
       fullPowerset: this.fullPowerset,
       limits: { maxStates: this.maxStates, maxExprSize: this.maxExprSize },
-    };
+      // Für die CNF-Verfahren (CnfOptions); andere Verfahren ignorieren die Felder.
+      sparse: this.cnfSparse,
+      scriptLiteral: this.cnfScriptLiteral,
+    } as Omit<ProcOptions, 'onProgress'>;
   }
 
   /** Name des Ergebnisses wie in den Anforderungen: R1 → G1 → N1 → M1 → M1min. */
@@ -80,6 +87,11 @@ class Procs {
       egrep2regex: 'R',
       sprachop: 'L',
       grammar2nka: 'K',
+      cnfTerminals: 'G',
+      cnfEpsilon: 'G',
+      cnfChains: 'G',
+      cnfLong: 'G',
+      toCnf: 'G',
     };
     let n = 1;
     while (names.includes(prefix[method] + n)) n++;

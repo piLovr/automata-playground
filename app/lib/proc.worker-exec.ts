@@ -1,6 +1,10 @@
 // Ausführung eines Verfahrensauftrags (im Worker oder ersatzweise im Hauptthread).
 import {
   bottomUpRun,
+  cyk,
+  earley,
+  lrAutomaton,
+  lrRun,
   countByLength,
   equivalent,
   findAmbiguity,
@@ -36,6 +40,14 @@ export function execute(call: ProcCall, onProgress?: (done: number) => void): un
       return topDownRun(call.sources[0] as Grammar, call.word);
     case 'bottomUpRun':
       return bottomUpRun(call.sources[0] as Grammar, call.word);
+    case 'cyk':
+      return cyk(call.sources[0] as Grammar, call.word, opts);
+    case 'earley':
+      return earley(call.sources[0] as Grammar, call.word, opts);
+    case 'lr': {
+      const a = lrAutomaton(call.sources[0] as Grammar, call.mode, opts);
+      return { automaton: a, run: a.ok && call.word ? lrRun(a.result, call.word) : null };
+    }
     case 'findAmbiguity':
       return findAmbiguity(call.sources[0] as Grammar, { maxLen: call.maxLen, maxNodes: call.limit });
   }

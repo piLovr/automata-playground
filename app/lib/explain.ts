@@ -9,7 +9,12 @@ import {
   type Production,
   type Word,
 } from '../../core/index';
-import { showSym, showWord } from './format';
+import { showSym as baseShowSym, showWord as baseShowWord } from './format';
+
+/** Nichtterminale der Grammatik im aktuellen Schritt: werden ohne ⟨⟩ geschrieben (Z+, V1, X0). */
+let plainNts = new Set<string>();
+const showSym = (s: string): string => (plainNts.has(s) ? s : baseShowSym(s));
+const showWord = (w: Word): string => (w.length === 0 ? 'ε' : plainNts.size ? w.map(showSym).join('') : baseShowWord(w));
 import { t } from '../i18n';
 
 function nameIn(obj: FormalObject | undefined, id: string): string | null {
@@ -91,6 +96,10 @@ function show(key: string, v: unknown, ctx: FormalObject | undefined, src: Forma
 export function explainProc(step: ProcStep, sources: FormalObject[]): string {
   const ctx = step.view.obj;
   const src = sources[0];
+  plainNts = new Set([
+    ...(ctx?.kind === 'grammatik' ? ctx.nonterminals : []),
+    ...(src?.kind === 'grammatik' ? src.nonterminals : []),
+  ]);
   const p: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(step.explanation.params)) {
     const useSrc = k.startsWith('src') ? src : undefined;

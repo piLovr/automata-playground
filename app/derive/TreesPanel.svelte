@@ -4,7 +4,7 @@
   import type { AmbiguityResult, Grammar, ProcResult, TreesResult } from '../../core/index';
   import { store } from '../lib/store.svelte';
   import { runner } from '../lib/runner.svelte';
-  import { diagnosticText, parseInputWord, showWord } from '../lib/format';
+  import { diagnosticText, parseInputWord, showWordIn } from '../lib/format';
   import TreeView from './TreeView.svelte';
   import { t } from '../i18n';
 
@@ -28,7 +28,7 @@
     if (out.status !== 'done') return;
     if (out.value.ok) {
       trees = out.value.result;
-      treesWord = showWord(w);
+      treesWord = showWordIn(g.nonterminals, w);
       shown = 4;
     } else error = out.value.diagnostics[0] ? diagnosticText(out.value.diagnostics[0]) : t('proc.failed');
   }
@@ -81,7 +81,7 @@
     </div>
     {#if amb}
       {#if amb.found}
-        <p class="summary bad">{t('trees.ambFound', { w: showWord(amb.found.word) })}</p>
+        <p class="summary bad">{t('trees.ambFound', { w: showWordIn(g.nonterminals, amb.found.word) })}</p>
         <div class="grid two">
           {#each amb.found.trees as tr, i (i)}
             <figure>

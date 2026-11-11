@@ -9,17 +9,20 @@
   import DerivePanel from '../derive/DerivePanel.svelte';
   import TreesPanel from '../derive/TreesPanel.svelte';
   import AnalysisPanel from '../derive/AnalysisPanel.svelte';
+  import CykPanel from '../cfg/CykPanel.svelte';
+  import EarleyPanel from '../cfg/EarleyPanel.svelte';
+  import LrPanel from '../cfg/LrPanel.svelte';
   import { t } from '../i18n';
 
   const g = $derived(store.obj as Grammar);
   const info = $derived(grammarType(g));
   const keys = $derived(hl.keysFor(g.name));
 
-  type Tab = 'prods' | 'derive' | 'trees' | 'parse';
+  type Tab = 'prods' | 'derive' | 'trees' | 'parse' | 'cyk' | 'earley' | 'lr';
   let tab = $state<Tab>('prods');
-  const TABS: Tab[] = ['prods', 'derive', 'trees', 'parse'];
-  /** Bäume und Kellerautomaten-Analyse gibt es nur für Typ 2 und 3. */
-  const needsType2 = (x: Tab): boolean => x === 'trees' || x === 'parse';
+  const TABS: Tab[] = ['prods', 'derive', 'trees', 'parse', 'cyk', 'earley', 'lr'];
+  /** Bäume, Analyse, CYK, Earley und LR gibt es nur für Typ 2 und 3. */
+  const needsType2 = (x: Tab): boolean => x !== 'prods' && x !== 'derive';
 </script>
 
 <div class="g-stage">
@@ -35,6 +38,12 @@
     <TreesPanel {g} />
   {:else if tab === 'parse' && info.type >= 2}
     <AnalysisPanel {g} />
+  {:else if tab === 'cyk' && info.type >= 2}
+    <CykPanel {g} />
+  {:else if tab === 'earley' && info.type >= 2}
+    <EarleyPanel {g} />
+  {:else if tab === 'lr' && info.type >= 2}
+    <LrPanel {g} />
   {:else}
   <header>
     <p class="eyebrow">{t('grammar.productions')}</p>

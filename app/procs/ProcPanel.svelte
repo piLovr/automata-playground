@@ -197,6 +197,8 @@
     <summary>{t('proc.settings')}</summary>
     <label class="check"><input type="checkbox" bind:checked={procs.simplify} /> {t('proc.simplify')}</label>
     <label class="check"><input type="checkbox" bind:checked={procs.fullPowerset} /> {t('proc.fullPowerset')}</label>
+    <label class="check"><input type="checkbox" bind:checked={procs.cnfSparse} /> {t('proc.cnfSparse')}</label>
+    <label class="check"><input type="checkbox" bind:checked={procs.cnfScriptLiteral} /> {t('proc.cnfScriptLiteral')}</label>
     <label class="num">{t('proc.maxStates')} <input type="number" min="1" bind:value={procs.maxStates} /></label>
     <label class="num">{t('proc.maxExprSize')} <input type="number" min="1" bind:value={procs.maxExprSize} /></label>
   </details>

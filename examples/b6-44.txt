@@ -1,0 +1,11 @@
+# Skript 6.44: Grammatik für die Earley-Analyse von abc
+grammatik B6_44 {
+  nichtterminale S A X B C
+  terminale a b c
+  start S
+  S -> AX
+  X -> BC
+  A -> a
+  B -> b
+  C -> c
+}

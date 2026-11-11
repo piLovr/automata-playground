@@ -8,6 +8,7 @@ import { deaToGrammar, grammarToNea, type3Violations } from './grammarops';
 import { egrepToRegex } from './egrep';
 import { mengeToDea } from './bridges';
 import { grammarToNka, type2Violations } from './parsing';
+import { cnfChains, cnfEpsilon, cnfLong, cnfTerminals, toCnf } from '../cfg/cnf';
 import { mealyToMoore, mooreToMealy } from './mealymoore';
 
 export function applicableMethods(o: FormalObject): MethodId[] {
@@ -21,7 +22,9 @@ export function applicableMethods(o: FormalObject): MethodId[] {
     case 'grammatik':
       return [
         ...(type3Violations(o).length === 0 ? (['grammar2nea'] as MethodId[]) : []),
-        ...(type2Violations(o).length === 0 ? (['grammar2nka'] as MethodId[]) : []),
+        ...(type2Violations(o).length === 0
+          ? (['grammar2nka', 'cnfTerminals', 'cnfEpsilon', 'cnfChains', 'cnfLong', 'toCnf'] as MethodId[])
+          : []),
       ];
     case 'egrep':
       return ['egrep2regex'];
@@ -67,6 +70,16 @@ export function runMethod(method: MethodId, sources: FormalObject[], opts: ProcO
       return a.kind === 'grammatik' ? grammarToNea(a, opts) : wrong(a.kind);
     case 'grammar2nka':
       return a.kind === 'grammatik' ? grammarToNka(a, opts) : wrong(a.kind);
+    case 'cnfTerminals':
+      return a.kind === 'grammatik' ? cnfTerminals(a, opts) : wrong(a.kind);
+    case 'cnfEpsilon':
+      return a.kind === 'grammatik' ? cnfEpsilon(a, opts) : wrong(a.kind);
+    case 'cnfChains':
+      return a.kind === 'grammatik' ? cnfChains(a, opts) : wrong(a.kind);
+    case 'cnfLong':
+      return a.kind === 'grammatik' ? cnfLong(a, opts) : wrong(a.kind);
+    case 'toCnf':
+      return a.kind === 'grammatik' ? toCnf(a, opts) : wrong(a.kind);
     case 'complement':
       return a.kind === 'dea' ? complement(a, opts) : wrong(a.kind);
     case 'reachable':

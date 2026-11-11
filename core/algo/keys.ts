@@ -58,6 +58,19 @@ export const EXPLANATION_KEYS = [
   'proc.gk.produce',
   'proc.gk.read',
   'proc.gk.accept',
+  'proc.earley.item',
+  'proc.lr.state',
+  'proc.eps.round',
+  'proc.cnf.terminal',
+  'proc.cnf.epsilon.production',
+  'proc.cnf.epsilon.start',
+  'proc.cnf.chain.set',
+  'proc.cnf.chain.drop',
+  'proc.cnf.chain.nt',
+  'proc.cnf.scriptLiteral',
+  'proc.cnf.long.aux',
+  'proc.cnf.done',
+  'proc.cyk.cell',
 ] as const;
 
 export type ExplanationKey = (typeof EXPLANATION_KEYS)[number];

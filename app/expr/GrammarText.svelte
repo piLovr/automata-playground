@@ -33,7 +33,7 @@
   });
   /** Mehrbuchstabige Nichtterminale wie im Skript: X0 → X₀, Xz → X_z (tiefgestellt). */
   function nt(s: Sym): { base: string; sub: string } {
-    const m = /^(\p{Lu})_?([\p{L}\p{N}]+)$/u.exec(s);
+    const m = /^(\p{Lu})_?(.+)$/u.exec(s);
     return m ? { base: m[1]!, sub: m[2]! } : { base: showSym(s), sub: '' };
   }
   const typeOf = $derived(new Map((types?.productions ?? []).map((x) => [x.id, x])));

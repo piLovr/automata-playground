@@ -32,6 +32,11 @@ export const METHODS: Record<MethodId, MethodInfo> = {
   sprachop: { ref: '1.6–1.9' },
   grammar2nka: { ref: '4.27' },
   menge2dea: { ref: '' },
+  cnfTerminals: { ref: '6.31 (1)' },
+  cnfEpsilon: { ref: '6.31 (2)' },
+  cnfChains: { ref: '6.31 (3)' },
+  cnfLong: { ref: '6.31 (4)' },
+  toCnf: { ref: '6.31' },
 };
 
 /** Reihenfolge im Verfahrensreiter. */
@@ -50,6 +55,11 @@ export const METHOD_ORDER: MethodId[] = [
   'thompson',
   'grammar2nea',
   'grammar2nka',
+  'toCnf',
+  'cnfTerminals',
+  'cnfEpsilon',
+  'cnfChains',
+  'cnfLong',
   'complement',
   'intersection',
   'union',

@@ -1,0 +1,8 @@
+# Skript 6.32: Ausgangsgrammatik der CNF-Umformung, Startsymbol E
+grammatik B6_32 {
+  nichtterminale E F
+  terminale + ( ) a
+  start E
+  E -> E+F | F
+  F -> (E) | a
+}

@@ -15,7 +15,7 @@
   } from '../../core/index';
   import { store } from '../lib/store.svelte';
   import { runner } from '../lib/runner.svelte';
-  import { parseInputWord, showSym, showWord } from '../lib/format';
+  import { parseInputWord, showSymIn, showWordIn } from '../lib/format';
   import TreeView from './TreeView.svelte';
   import { t } from '../i18n';
 
@@ -50,7 +50,7 @@
   const done = $derived(derivation !== null && form.every((s) => !g.nonterminals.includes(s)));
   const prodText = (id: ProductionId): string => {
     const p = g.productions.find((x) => x.id === id);
-    return p ? `${showWord(p.left)} → ${showWord(p.right)}` : id;
+    return p ? `${showWordIn(g.nonterminals, p.left)} → ${showWordIn(g.nonterminals, p.right)}` : id;
   };
 
   function apply(production: ProductionId, pos: number): void {
@@ -78,7 +78,7 @@
     if (out.value.ok) {
       derivation = out.value.result;
       message = t('derive.found', { n: out.value.result.steps.length });
-    } else message = out.value.diagnostics.length ? t('derive.limitHit') : t('derive.notDerivable', { w: showWord(w) });
+    } else message = out.value.diagnostics.length ? t('derive.limitHit') : t('derive.notDerivable', { w: showWordIn(g.nonterminals, w) });
   }
 </script>
 
@@ -105,12 +105,12 @@
             class:usable={usable.has(i)}
             class:sel={selected === i || (selected === null && leftmostMode && type2 && i === leftPos)}
             disabled={!usable.has(i)}
-            onclick={() => (selected = i)}>{showSym(s)}</button
+            onclick={() => (selected = i)}>{showSymIn(g.nonterminals, s)}</button
           >
         {/each}
       </div>
       {#if done}
-        <p class="ok">{t('derive.done', { w: showWord(form) })}</p>
+        <p class="ok">{t('derive.done', { w: showWordIn(g.nonterminals, form) })}</p>
       {:else if atSelected.length}
         <div class="prods">
           {#each atSelected as o (o.production)}
@@ -125,11 +125,11 @@
 
       <p class="eyebrow">{t('derive.history')}</p>
       <ol class="hist">
-        <li><button class="step" onclick={() => back(0)}>{showWord(derivation.start)}</button></li>
+        <li><button class="step" onclick={() => back(0)}>{showWordIn(g.nonterminals, derivation.start)}</button></li>
         {#each derivation.steps as st, i (i)}
           <li>
             <span class="arrow" title={prodText(st.production)}>⇒</span>
-            <button class="step" onclick={() => back(i + 1)}>{showWord(st.form)}</button>
+            <button class="step" onclick={() => back(i + 1)}>{showWordIn(g.nonterminals, st.form)}</button>
           </li>
         {/each}
       </ol>

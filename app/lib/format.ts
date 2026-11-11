@@ -126,3 +126,12 @@ export function explainText(obj: FormalObject | undefined, key: string, params: 
   }
   return t(`explain.${key}`, p);
 }
+
+/** Symbol einer Grammatik: mehrbuchstabige Nichtterminale (Z+, V1, X0) ohne ⟨⟩, wie im Skript. */
+export function showSymIn(nonterminals: readonly Sym[], s: Sym): string {
+  return nonterminals.includes(s) ? s : showSym(s);
+}
+
+export function showWordIn(nonterminals: readonly Sym[], w: Word): string {
+  return w.length === 0 ? 'ε' : w.map((s) => showSymIn(nonterminals, s)).join('');
+}

@@ -23,4 +23,9 @@ export const METHOD_IDS: readonly MethodId[] = [
   'sprachop',
   'menge2dea',
   'grammar2nka',
+  'cnfTerminals',
+  'cnfEpsilon',
+  'cnfChains',
+  'cnfLong',
+  'toCnf',
 ];

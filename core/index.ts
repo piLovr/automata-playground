@@ -42,3 +42,6 @@ export { makeMenge } from './model/menge';
 
 // Ableitungen, Bäume, Mehrdeutigkeit (M4)
 export * from './derive/index';
+
+// Chomsky-Normalform, CYK, Earley, LR (M5)
+export * from './cfg/index';

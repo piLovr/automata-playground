@@ -37,7 +37,7 @@
     const walk = (t: DerivTree, d: number, parent: Placed | null): Placed => {
       depth = Math.max(depth, d);
       const sym = t.sym;
-      const m = sym ? /^(\p{Lu})_?([\p{L}\p{N}]+)$/u.exec(sym) : null;
+      const m = sym && N.has(sym) ? /^(\p{Lu})_?(.+)$/u.exec(sym) : null;
       const p: Placed = {
         id: t.id,
         label: sym === null ? 'ε' : m ? m[1]! : sym,
