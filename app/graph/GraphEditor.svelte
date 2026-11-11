@@ -9,6 +9,7 @@
     ACCEPT_GAP,
     edgeBetween,
     selfLoop,
+    spreadLabels,
     freeAngle,
     arrowHead,
     startArrow,
@@ -111,7 +112,7 @@
     return m;
   });
 
-  const geometry = $derived.by(() => {
+  const rawGeometry = $derived.by(() => {
     const keys = new Set(groups.map((g) => g.key));
     return groups.map((g) => {
       if (g.from === g.to) return { g, geo: selfLoop(pos(g.from), loopDir.get(g.from) ?? -Math.PI / 2) };
@@ -121,6 +122,23 @@
         : g.labels.reduce((n, l) => n + [...l.text].length, 0) + (g.labels.length - 1) * 2;
       return { g, geo: edgeBetween(pos(g.from), pos(g.to), both ? 26 : 0, STATE_R, text * 8.4) };
     });
+  });
+
+  /** Beschriftungen nach dem Platzieren entzerren, damit nichts übereinanderliegt. */
+  const geometry = $derived.by(() => {
+    const boxes = rawGeometry.map(({ g, geo }) => {
+      const chars = stacked
+        ? Math.max(...g.labels.map((l) => [...l.text].length))
+        : g.labels.reduce((n, l) => n + [...l.text].length, 0) + (g.labels.length - 1) * 1.3;
+      return {
+        at: geo.label,
+        w: chars * 8.4,
+        h: (stacked ? g.labels.length * 1.3 : 1) * 14 + 2,
+        loop: g.from === g.to ? pos(g.from) : undefined,
+      };
+    });
+    const at = spreadLabels(boxes, (obj?.states ?? []).map((s) => pos(s.id)));
+    return rawGeometry.map((x, i) => ({ ...x, geo: { ...x.geo, label: at[i]! } }));
   });
 
   const startGeo = $derived.by(() => {

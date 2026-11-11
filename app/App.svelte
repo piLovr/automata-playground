@@ -36,7 +36,26 @@
     if (hover) s.add(hover);
     return s;
   });
-  let sideWidth = $state(440);
+  const LAYOUT_KEY = 'automaten-playground:layout';
+  const saved = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(LAYOUT_KEY) ?? '{}') as Partial<Record<'side' | 'deck' | 'showSide' | 'showDeck', number | boolean>>;
+    } catch {
+      return {};
+    }
+  })();
+  let sideWidth = $state(typeof saved.side === 'number' ? Math.min(760, Math.max(300, saved.side)) : 440);
+  let deckHeight = $state(typeof saved.deck === 'number' ? Math.min(600, Math.max(120, saved.deck)) : 240);
+  let showSide = $state(saved.showSide !== false);
+  let showDeck = $state(saved.showDeck !== false);
+  $effect(() => {
+    const layout = { side: sideWidth, deck: deckHeight, showSide, showDeck };
+    try {
+      localStorage.setItem(LAYOUT_KEY, JSON.stringify(layout));
+    } catch {
+      /* Speicher gesperrt: Anordnung gilt nur für diese Sitzung */
+    }
+  });
   let showKeys = $state(false);
   let showLibrary = $state(false);
   let fileInput: HTMLInputElement | undefined = $state();
@@ -154,18 +173,41 @@
   }
 
   // ---------------------------------------------------------------------------
-  // Seitenleiste in der Breite ziehen
+  // Seitenleiste und Simulationsleiste in der Größe ziehen
 
-  function startResize(e: PointerEvent): void {
+  function drag(e: PointerEvent, apply: (dx: number, dy: number) => void): void {
+    e.preventDefault();
     const startX = e.clientX;
-    const startW = sideWidth;
-    const move = (ev: PointerEvent) => (sideWidth = Math.min(760, Math.max(300, startW - (ev.clientX - startX))));
+    const startY = e.clientY;
+    const move = (ev: PointerEvent) => apply(ev.clientX - startX, ev.clientY - startY);
     const up = () => {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', up);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', up);
+  }
+
+  function startResize(e: PointerEvent): void {
+    const startW = sideWidth;
+    drag(e, (dx) => (sideWidth = Math.min(760, Math.max(300, startW - dx))));
+  }
+
+  function startResizeDeck(e: PointerEvent): void {
+    const startH = deckHeight;
+    drag(e, (_, dy) => (deckHeight = Math.min(Math.max(120, window.innerHeight - 52 - 160), Math.max(120, startH - dy))));
+  }
+
+  /** Pfeiltasten am fokussierten Teiler: Größe in 16-px-Schritten ändern. */
+  function nudge(e: KeyboardEvent, axis: 'side' | 'deck'): void {
+    const k = e.key;
+    const grow = axis === 'side' ? k === 'ArrowLeft' : k === 'ArrowUp';
+    const shrink = axis === 'side' ? k === 'ArrowRight' : k === 'ArrowDown';
+    if (!grow && !shrink) return;
+    e.preventDefault();
+    const d = grow ? 16 : -16;
+    if (axis === 'side') sideWidth = Math.min(760, Math.max(300, sideWidth + d));
+    else deckHeight = Math.min(600, Math.max(120, deckHeight + d));
   }
 
   function onKey(e: KeyboardEvent): void {
@@ -208,7 +250,15 @@
 
 <svelte:window onkeydown={onKey} />
 
-<div class="app" style:--side="{sideWidth}px">
+<div
+  class="app"
+  class:noside={!showSide}
+  class:nodeck={!showDeck}
+  style:--side="{showSide ? sideWidth : 0}px"
+  style:--vsplit={showSide ? '6px' : '0px'}
+  style:--deck="{showDeck ? deckHeight : 0}px"
+  style:--hsplit={showDeck ? '6px' : '0px'}
+>
   <!-- Kopfleiste -->
   <header class="top">
     <div class="brand" aria-label={t('app.title')}>
@@ -253,6 +303,15 @@
         <svg viewBox="0 0 16 16"><path d="M11 4l3 3-3 3" /><path d="M14 7H6.5a4 4 0 0 0 0 8H9" /></svg>
       </button>
       <span class="divider"></span>
+      {#if store.view === 'single'}
+        <button class="btn ghost icon" class:off={!showDeck} aria-pressed={showDeck} onclick={() => (showDeck = !showDeck)} title={t('layout.deck')} aria-label={t('layout.deck')}>
+          <svg viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="1.5" /><path d="M2 9.5h12" /></svg>
+        </button>
+        <button class="btn ghost icon" class:off={!showSide} aria-pressed={showSide} onclick={() => (showSide = !showSide)} title={t('layout.side')} aria-label={t('layout.side')}>
+          <svg viewBox="0 0 16 16"><rect x="2" y="2.5" width="12" height="11" rx="1.5" /><path d="M10 2.5v11" /></svg>
+        </button>
+        <span class="divider"></span>
+      {/if}
       <button class="btn ghost" onclick={() => fileInput?.click()}>{t('menu.open')}</button>
       <input bind:this={fileInput} type="file" accept=".txt,.json,.aut,text/plain,application/json" hidden onchange={openFile} />
       <Menu align="right">
@@ -370,7 +429,10 @@
   </main>
 
   <!-- Seitenleiste -->
-  <div class="resizer" role="separator" aria-orientation="vertical" onpointerdown={startResize}></div>
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+  <div class="resizer" role="separator" aria-orientation="vertical" aria-label={t('layout.side')} tabindex="0" onpointerdown={startResize} onkeydown={(e) => nudge(e, 'side')}></div>
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+  <div class="hsplit" role="separator" aria-orientation="horizontal" aria-label={t('layout.deck')} tabindex="0" onpointerdown={startResizeDeck} onkeydown={(e) => nudge(e, 'deck')}></div>
   <aside class="side">
     {#if obj && !aut}
       <section class="definition" aria-label={t('panel.definition')}>
@@ -561,11 +623,12 @@
 <style>
   .app {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 6px var(--side);
-    grid-template-rows: 52px minmax(0, 1fr) 240px;
+    grid-template-columns: minmax(0, 1fr) var(--vsplit) var(--side);
+    grid-template-rows: 52px minmax(0, 1fr) var(--hsplit) var(--deck);
     grid-template-areas:
       'top top top'
       'stage resizer side'
+      'hsplit hsplit side'
       'deck deck side';
     height: 100vh;
     height: 100dvh;
@@ -573,7 +636,7 @@
 
   /* Kopfleiste */
   .ws-area {
-    grid-row: 2 / 4;
+    grid-row: 2 / 5;
     grid-column: 1 / 4;
     min-height: 0;
   }
@@ -803,8 +866,28 @@
     background: var(--paper);
     border-left: 1px solid var(--rule);
   }
-  .resizer:hover {
+  .resizer:hover,
+  .resizer:focus-visible,
+  .hsplit:hover,
+  .hsplit:focus-visible {
     background: var(--paper-2);
+    outline: none;
+  }
+  .hsplit {
+    grid-area: hsplit;
+    cursor: row-resize;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    overflow: hidden;
+  }
+  .noside .side,
+  .noside .resizer,
+  .nodeck .deck,
+  .nodeck .hsplit {
+    display: none;
+  }
+  .btn.icon.off {
+    opacity: 0.5;
   }
   .side {
     grid-area: side;
@@ -951,7 +1034,7 @@
   .toast {
     position: fixed;
     left: 50%;
-    bottom: 256px;
+    bottom: calc(var(--deck) + var(--hsplit) + 16px);
     transform: translateX(-50%);
     z-index: 50;
     padding: 9px 16px;
@@ -1019,7 +1102,8 @@
       height: auto;
       min-height: 100dvh;
     }
-    .resizer {
+    .resizer,
+    .hsplit {
       display: none;
     }
     .brand .name {

@@ -140,3 +140,68 @@ export function splitSubscript(name: string): { base: string; sub: string } {
   const m = /^(\p{L}+'*)(\d+)$/u.exec(name);
   return m ? { base: m[1]!, sub: m[2]! } : { base: name, sub: '' };
 }
+
+export interface LabelBox {
+  at: Point;
+  /** Geschätzte Textbreite und -höhe in Pixeln. */
+  w: number;
+  h: number;
+  /** Mittelpunkt des Zustands bei Schleifen: dann ist der Text je nach Seite verankert. */
+  loop?: Point;
+}
+
+/** Rechteck, das der Text tatsächlich belegt (Anker wie in der Darstellung). */
+function boxRect(b: LabelBox, at: Point, pad: number): { x0: number; y0: number; x1: number; y1: number } {
+  const side = b.loop ? at.x - b.loop.x : 0;
+  const x0 = (side > 20 ? at.x : side < -20 ? at.x - b.w : at.x - b.w / 2) - pad;
+  return { x0, x1: x0 + b.w + 2 * pad, y0: at.y - b.h / 2 - pad, y1: at.y + b.h / 2 + pad };
+}
+
+/**
+ * Schiebt Beschriftungen auseinander, damit sie sich weder gegenseitig noch die Zustandskreise
+ * überdecken. Gibt die neuen Positionen zurück (gleiche Reihenfolge wie boxes).
+ */
+export function spreadLabels(boxes: LabelBox[], circles: Point[], r = STATE_R + ACCEPT_GAP + 3): Point[] {
+  const at = boxes.map((b) => ({ ...b.at }));
+  const pad = 3;
+  for (let iter = 0; iter < 40; iter++) {
+    let moved = false;
+    for (let i = 0; i < boxes.length; i++) {
+      const a = boxRect(boxes[i]!, at[i]!, pad);
+      for (let j = i + 1; j < boxes.length; j++) {
+        const b = boxRect(boxes[j]!, at[j]!, pad);
+        const ox = Math.min(a.x1, b.x1) - Math.max(a.x0, b.x0);
+        const oy = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+        if (ox <= 0 || oy <= 0) continue;
+        moved = true;
+        // Entlang der Achse mit der kleineren Überlappung trennen; bei Gleichstand senkrecht.
+        if (oy <= ox + 4) {
+          const s = at[i]!.y <= at[j]!.y ? 1 : -1;
+          at[i]!.y -= (s * (oy + 0.5)) / 2;
+          at[j]!.y += (s * (oy + 0.5)) / 2;
+        } else {
+          const s = at[i]!.x <= at[j]!.x ? 1 : -1;
+          at[i]!.x -= (s * (ox + 0.5)) / 2;
+          at[j]!.x += (s * (ox + 0.5)) / 2;
+        }
+      }
+      const q = boxRect(boxes[i]!, at[i]!, pad);
+      for (const c of circles) {
+        const nx = Math.max(q.x0, Math.min(c.x, q.x1));
+        const ny = Math.max(q.y0, Math.min(c.y, q.y1));
+        const d = Math.hypot(nx - c.x, ny - c.y);
+        if (d >= r) continue;
+        moved = true;
+        if (d < 1e-6) {
+          at[i]!.y -= r + (q.y1 - q.y0) / 2;
+        } else {
+          const push = r - d + 0.5;
+          at[i]!.x += ((nx - c.x) / d) * push;
+          at[i]!.y += ((ny - c.y) / d) * push;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+  return at;
+}

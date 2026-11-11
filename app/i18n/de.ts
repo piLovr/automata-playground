@@ -31,6 +31,8 @@ export const de = {
   'menu.share': 'Link teilen',
   'menu.shareCopied': 'Link kopiert',
   'menu.shareFailed': 'Kopieren nicht möglich, Link steht in der Adresszeile',
+  'layout.side': 'Seitenleiste ein-/ausblenden',
+  'layout.deck': 'Simulationsleiste ein-/ausblenden',
   'menu.undo': 'Rückgängig',
   'menu.redo': 'Wiederholen',
   'menu.convert.nea': 'In NEA umwandeln',
