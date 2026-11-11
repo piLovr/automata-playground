@@ -8,6 +8,8 @@ export interface Example {
   text: string;
   /** Vorschlag für das Eingabewort beim Laden. */
   word?: string;
+  /** egrep: Prüftext beim Laden. */
+  testText?: string;
 }
 
 export const examples: Example[] = [
@@ -97,6 +99,91 @@ export const examples: Example[] = [
   5 -001-> 5
   layout 0@0,0 1@420,-90 2@200,-90 3@420,0 4@420,90 5@200,90
 }
+`,
+  },
+  {
+    id: 'b2-24',
+    ref: '2.24',
+    title: 'Ausdruck (0*1*)*',
+    word: '0110',
+    text: `regex B2_24 = (0*1*)*
+`,
+  },
+  {
+    id: 'ra-endet01',
+    ref: '',
+    title: 'Ausdruck: endet auf 01 (Abnahme M2)',
+    word: '1101',
+    text: `regex Endet01 = (0|1)*01
+`,
+  },
+  {
+    id: 'b2-44',
+    ref: '2.44',
+    title: 'Typ-3-Grammatik für Gleitkommazahlen',
+    word: '-10.1E-1',
+    text: `grammatik B2_44 {
+  nichtterminale X0 X1 X2 X3 X4 X5 X6 X7
+  terminale 0 1 - . E
+  start X0
+  X0 -> -X1 | X1
+  X1 -> 0X2 | 1X2
+  X2 -> 0X2 | 1X2 | ε | X3
+  X3 -> .0X4 | .1X4 | X5
+  X4 -> 0X4 | 1X4 | ε | X5
+  X5 -> E-X6 | EX6
+  X6 -> 0X7 | 1X7
+  X7 -> 0X7 | 1X7 | ε
+}
+`,
+  },
+  {
+    id: 'b2-66-ra',
+    ref: '2.66',
+    title: 'Ausdruck (01)*|(001)*',
+    word: '0101',
+    text: `regex B2_66 = (01)*|(001)*
+`,
+  },
+  {
+    id: 'b2-92',
+    ref: '2.92',
+    title: 'DEA zum Minimieren',
+    word: 'ab',
+    text: `dea B2_92 {
+  alphabet a b
+  start A
+  accept C D G
+  A -a-> B
+  A -b-> F
+  B -a-> C
+  B -b-> E
+  C -a,b-> D
+  D -a-> C
+  D -b-> D
+  E -a,b-> E
+  F -a-> E
+  F -b-> G
+  G -a-> G
+  G -b-> C
+  layout A@0,0 B@180,-110 F@180,110 C@380,-110 E@380,40 G@380,170 D@580,-110
+}
+`,
+  },
+  {
+    id: 'b3-23',
+    ref: '3.23',
+    title: 'Regex mit zwei Gruppen',
+    testText: 'zzbbcbbz\nzzbbcbbzzzbbcccbb\nzzbbz',
+    text: `egrep B3_23 = (bb)c*(bb)
+`,
+  },
+  {
+    id: 'b3-24',
+    ref: '3.24',
+    title: 'Regex (.*)(.*): erste Gruppe ist gefräßig',
+    testText: 'abcdefg',
+    text: `egrep B3_24 = (.*)(.*)
 `,
   },
   {

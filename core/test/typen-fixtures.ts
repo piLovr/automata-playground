@@ -1,4 +1,4 @@
-import { parseDocument } from '../index';
+import { isAutomaton, parseDocument } from '../index';
 import type {
   Automaton,
   Document,
@@ -152,8 +152,10 @@ export function firstObject(doc: Document): FormalObject {
 }
 
 /** Erstes Objekt eines Textes. */
-export function parseFirst(text: string): FormalObject {
-  return firstObject(parseDocument(text).doc);
+export function parseFirst(text: string): Automaton {
+  const o = firstObject(parseDocument(text).doc);
+  if (!isAutomaton(o)) throw new Error(`Zustandsmaschine erwartet, ist ${o.kind}`);
+  return o;
 }
 
 /** ID des Zustands mit dem angegebenen Namen. Wirft, wenn er fehlt. */

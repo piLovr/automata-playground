@@ -1,8 +1,8 @@
 /// <reference types="node" />
 import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { parseDocument, printDocument, simulate, validate } from '../index';
-import type { FormalObject, Word } from '../index';
+import { isAutomaton, parseDocument, printDocument, simulate, validate } from '../index';
+import type { Automaton, Word } from '../index';
 
 const dir = new URL('../../examples/', import.meta.url);
 const files = readdirSync(dir).filter((f) => f.endsWith('.txt')).sort();
@@ -29,7 +29,7 @@ describe('Beispieldateien examples/*.txt', () => {
       });
 
       it('validate liefert keine Fehler', () => {
-        const obj = parsed.doc.objects[0] as FormalObject;
+        const obj = parsed.doc.objects[0]!;
         const errors = validate(obj).filter((d) => d.severity === 'error');
         expect(errors).toEqual([]);
       });
@@ -44,9 +44,9 @@ describe('Beispieldateien examples/*.txt', () => {
 });
 
 describe('Simulation der Beispiele', () => {
-  const objectOf = (file: string): FormalObject => {
+  const objectOf = (file: string): Automaton => {
     const obj = parseDocument(load(file)).doc.objects[0];
-    if (!obj) throw new Error(`kein Objekt in ${file}`);
+    if (!obj || !isAutomaton(obj)) throw new Error(`kein Automat in ${file}`);
     return obj;
   };
 
@@ -67,9 +67,9 @@ describe('Simulation der Beispiele', () => {
 });
 
 describe('Simulation der Beispiele für Mealy, Moore, Keller, TM', () => {
-  const objectOf = (file: string): FormalObject => {
+  const objectOf = (file: string): Automaton => {
     const obj = parseDocument(load(file)).doc.objects[0];
-    if (!obj) throw new Error(`kein Objekt in ${file}`);
+    if (!obj || !isAutomaton(obj)) throw new Error(`kein Automat in ${file}`);
     return obj;
   };
   const sym = (s: string) => [...s];

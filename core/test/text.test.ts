@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { parseDocument, parseWord, printSymbol, printWord } from '../index';
 import type { DEA, Diagnostic } from '../index';
-import { DEA_23, asDea, firstObject, idOf } from './fixtures';
+import { DEA_23, asAut, asDea, firstObject, idOf } from './fixtures';
 
 describe('Text: Parsen von DEA_23', () => {
   let diagnostics: Diagnostic[] = [];
@@ -85,21 +85,21 @@ describe('Text: Escapes, Kommentare, eps, states, Namen', () => {
   it('states-Zeile bestimmt die Reihenfolge der Zustände', () => {
     const text = 'dea R {\n  states Z Y\n  start Y\n  Y -a-> Z\n}\n';
     const { doc } = parseDocument(text);
-    expect(firstObject(doc).states.map((s) => s.name)).toEqual(['Z', 'Y']);
+    expect(asAut(firstObject(doc)).states.map((s) => s.name)).toEqual(['Z', 'Y']);
   });
 
   it('Zustandsnamen dürfen auf - enden (f-), Pfeil nur nach Leerraum', () => {
     const text = 'nea M {\n  start f-\n  f- -a-> z+\n}\n';
     const { doc, diagnostics } = parseDocument(text);
     expect(diagnostics).toEqual([]);
-    expect(firstObject(doc).states.map((s) => s.name)).toEqual(['f-', 'z+']);
+    expect(asAut(firstObject(doc)).states.map((s) => s.name)).toEqual(['f-', 'z+']);
   });
 
   it('layout mit negativen und Dezimalzahlen', () => {
     const text = 'nea P {\n  start A\n  A -a-> B\n  layout A@-2.5,3.25 B@80,120\n}\n';
     const { doc, diagnostics } = parseDocument(text);
     expect(diagnostics).toEqual([]);
-    const [a, b] = firstObject(doc).states;
+    const [a, b] = asAut(firstObject(doc)).states;
     expect(a?.pos).toEqual({ x: -2.5, y: 3.25 });
     expect(b?.pos).toEqual({ x: 80, y: 120 });
   });

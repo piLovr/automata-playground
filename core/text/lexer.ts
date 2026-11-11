@@ -23,7 +23,7 @@ export function isIdentChar(c: string): boolean {
   return c !== '' && /^[\p{L}\p{N}_]$/u.test(c);
 }
 export function isStateStart(c: string): boolean {
-  return c !== '' && /^[\p{L}\p{N}_+']$/u.test(c);
+  return c !== '' && (c === '∅' || /^[\p{L}\p{N}_+']$/u.test(c));
 }
 export function isStateChar(c: string): boolean {
   return c === '-' || c === '\u2212' || isStateStart(c);

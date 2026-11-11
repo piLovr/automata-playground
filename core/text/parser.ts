@@ -1,8 +1,10 @@
 // Toleranter Parser der Textsprache.
 import { findKindByKeyword, parseMove } from '../model/kinds';
 import type { AnyLabel, Extras, KindSpec } from '../model/kinds';
-import type { Diagnostic, Document, FormalObject, NkaLabel, Point, State, Sym, TmLabel, Transition, Word } from '../model/types';
+import type { Automaton, Diagnostic, Document, FormalObject, NkaLabel, Point, State, Sym, TmLabel, Transition, Word } from '../model/types';
 import { COMMON_KEYWORDS, Scanner, isStateStart } from './lexer';
+import { parseEgrepBlock, parseEgrepShort, parseGrammarBlock, parseRegexBlock, parseRegexShort } from './objects';
+import { mapStates, newOriginAcc, parseEntspricht, parseHerkunft, resolveSourceStates } from './origin';
 import { readSymbol } from './word';
 
 interface LabelItem {
@@ -225,7 +227,8 @@ function parseSymbolList(sc: Scanner): Sym[] {
   return list;
 }
 
-function parseBody(sc: Scanner, spec: KindSpec, name: string, braceAt: number): FormalObject {
+function parseBody(sc: Scanner, spec: KindSpec, name: string, braceAt: number): Automaton {
+  const originAcc = newOriginAcc();
   const states: State[] = [];
   const byName = new Map<string, State>();
   const mention = (n: string): State => {
@@ -269,6 +272,14 @@ function parseBody(sc: Scanner, spec: KindSpec, name: string, braceAt: number): 
     if (word === '') {
       sc.unexpected(['Anweisung']);
       sc.skipToLineEnd(true);
+      continue;
+    }
+    if (word === 'herkunft') {
+      parseHerkunft(sc, originAcc, stmtStart);
+      continue;
+    }
+    if (word === 'entspricht') {
+      parseEntspricht(sc, originAcc, stmtStart);
       continue;
     }
     if (isKeyword(word)) {
@@ -461,7 +472,14 @@ function parseBody(sc: Scanner, spec: KindSpec, name: string, braceAt: number): 
     }
   }
 
-  return spec.finish({ name, alphabet, states, start, accept, transitions }, extras);
+  const obj = spec.finish({ name, alphabet, states, start, accept, transitions }, extras);
+  if (originAcc.origin) {
+    const ids = new Map(obj.states.map((st) => [st.name, st.id]));
+    const origin = originAcc.origin;
+    if (origin.corr) origin.corr = mapStates(origin.corr, (n) => ids.get(n) ?? n);
+    return { ...obj, origin } as Automaton;
+  }
+  return obj;
 }
 
 /** Überspringt ein unbekanntes Objekt: `{ … }` mit Klammerzählung oder den Rest der Zeile. */
@@ -494,6 +512,43 @@ export function parseDocument(text: string): { doc: Document; diagnostics: Diagn
       sc.skipToLineEnd(false);
       continue;
     }
+    if (kw === 'regex' || kw === 'grammatik' || kw === 'egrep') {
+      sc.skipWsAndComments();
+      const nameStart = sc.i;
+      const name = sc.readStateName();
+      if (name === '') sc.unexpected(['Name']);
+      sc.skipInline();
+      sc.objectName = name;
+      let obj: FormalObject | null = null;
+      if ((kw === 'regex' || kw === 'egrep') && sc.peek() === '=') {
+        sc.advance();
+        obj = kw === 'regex' ? parseRegexShort(sc, name) : parseEgrepShort(sc, name);
+      } else {
+        sc.skipWsAndComments();
+        if (sc.peek() !== '{') {
+          sc.unexpected(kw !== 'grammatik' ? ['"="', '"{"'] : ['"{"']);
+          sc.skipToLineEnd(false);
+        } else {
+          const braceAt = sc.i;
+          sc.advance();
+          obj =
+            kw === 'regex'
+              ? parseRegexBlock(sc, name, braceAt)
+              : kw === 'egrep'
+                ? parseEgrepBlock(sc, name, braceAt)
+                : parseGrammarBlock(sc, name, braceAt);
+        }
+      }
+      sc.objectName = undefined;
+      if (obj) {
+        if (names.has(name)) sc.report('syntax.duplicateObject', { name }, nameStart, Math.max(1, name.length));
+        else {
+          names.add(name);
+          objects.push(obj);
+        }
+      }
+      continue;
+    }
     const spec = findKindByKeyword(kw);
     if (!spec) {
       sc.report('syntax.unknownKind', { kind: kw }, kwStart, kw.length);
@@ -522,5 +577,7 @@ export function parseDocument(text: string): { doc: Document; diagnostics: Diagn
       objects.push(obj);
     }
   }
-  return { doc: { version: 1, objects }, diagnostics: sc.diagnostics };
+  const doc: Document = { version: 1, objects };
+  resolveSourceStates(doc);
+  return { doc, diagnostics: sc.diagnostics };
 }

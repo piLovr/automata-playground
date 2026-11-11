@@ -16,7 +16,7 @@
     sim.branch = null;
   });
 
-  const obj = $derived(store.obj);
+  const obj = $derived(store.aut);
   const trace = $derived(sim.trace);
   const word = $derived<Word>(sim.parsed.word ?? []);
   const last = $derived(sim.steps.length ? sim.steps.length - 1 : 0);

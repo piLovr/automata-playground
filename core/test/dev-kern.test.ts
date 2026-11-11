@@ -84,7 +84,7 @@ describe('dev edit', () => {
     expect(edit.convertKind(n, 'dea')).toEqual(d);
     const frag = edit.copyStates(d, ['s0', 's1']);
     expect(edit.pasteFragment(d, frag, { x: 10, y: 0 }).obj.states.length).toBe(5);
-    const p = reconcile(d, parseDocument(dual.replaceAll('A', 'Q')).doc.objects[0]!);
+    const p = reconcile(d, parseDocument(dual.replaceAll('A', 'Q')).doc.objects[0]!) as DEA;
     expect(p.states.length).toBe(3);
     const lay = autoLayout(d);
     expect(Object.keys(lay).length).toBe(3);

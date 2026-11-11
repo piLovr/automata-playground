@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseDocument, validate } from '../index';
-import { DEA_23, DEA_UNVOLLSTAENDIG, asDea, firstObject, idOf } from './fixtures';
+import { DEA_23, DEA_UNVOLLSTAENDIG, asAut, asDea, firstObject, idOf } from './fixtures';
 
 describe('validate', () => {
   it('DEA_23 ist ohne Fehler und ohne dea.missing', () => {
@@ -12,7 +12,7 @@ describe('validate', () => {
   });
 
   it('DEA_UNVOLLSTAENDIG: genau eine Warnung dea.missing mit den drei Paaren in Tabellenreihenfolge', () => {
-    const obj = firstObject(parseDocument(DEA_UNVOLLSTAENDIG).doc);
+    const obj = asAut(firstObject(parseDocument(DEA_UNVOLLSTAENDIG).doc));
     const diags = validate(obj);
     expect(diags).toHaveLength(1);
     const [d] = diags;

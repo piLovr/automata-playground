@@ -1,12 +1,16 @@
 // Kanonischer Druck der Textsprache.
 import { getKind, moveLetter } from '../model/kinds';
-import type { Document, FormalObject, NkaLabel, TmLabel } from '../model/types';
+import type { Automaton, Document, FormalObject, NkaLabel, TmLabel } from '../model/types';
 import { transitionsOf } from '../model/util';
+import { printEgrepObject, printGrammarObject, printRegexObject } from './objects';
+import { printOrigin } from './origin';
 import { printSymbol, printWord } from './word';
 
 export interface PrintOptions {
   /** Standard true: layout-Zeile ausgeben, falls Positionen vorhanden. */
   layout?: boolean;
+  /** Standard true: `herkunft`/`entspricht`-Zeilen ausgeben. */
+  origin?: boolean;
 }
 
 export function formatNumber(n: number): string {
@@ -15,7 +19,15 @@ export function formatNumber(n: number): string {
 }
 
 
-export function printObject(obj: FormalObject, opts: PrintOptions = {}): string {
+/** `doc`: nur zum Auflösen der Quellzustände in `entspricht`-Zeilen; ohne Dokument werden IDs gedruckt. */
+export function printObject(obj: FormalObject, opts: PrintOptions = {}, doc?: Document): string {
+  if (obj.kind === 'regex') return printRegexObject(obj, { origin: opts.origin !== false }, doc);
+  if (obj.kind === 'egrep') return printEgrepObject(obj, { origin: opts.origin !== false }, doc);
+  if (obj.kind === 'grammatik') return printGrammarObject(obj, { origin: opts.origin !== false }, doc);
+  return printAutomaton(obj, opts, doc);
+}
+
+function printAutomaton(obj: Automaton, opts: PrintOptions, doc?: Document): string {
   const spec = getKind(obj.kind);
   const nameOf = new Map(obj.states.map((s) => [s.id, s.name]));
   const nm = (id: string): string => nameOf.get(id) ?? id;
@@ -91,9 +103,10 @@ export function printObject(obj: FormalObject, opts: PrintOptions = {}): string 
       .map((s) => `${s.name}@${formatNumber(s.pos?.x ?? 0)},${formatNumber(s.pos?.y ?? 0)}`);
     if (parts.length > 0) lines.push('  layout ' + parts.join(' '));
   }
+  if (opts.origin !== false && obj.origin) for (const l of printOrigin(obj.origin, nm, doc)) lines.push('  ' + l);
   return `${spec.keyword} ${obj.name} {\n${lines.map((l) => l + '\n').join('')}}\n`;
 }
 
 export function printDocument(doc: Document, opts: PrintOptions = {}): string {
-  return doc.objects.map((o) => printObject(o, opts)).join('\n');
+  return doc.objects.map((o) => printObject(o, opts, doc)).join('\n');
 }

@@ -1,0 +1,1 @@
+egrep B3_23 = (bb)c*(bb)

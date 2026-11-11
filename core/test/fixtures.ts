@@ -1,4 +1,5 @@
-import type { DEA, Document, FormalObject, NEA, StateId } from '../index';
+import { isAutomaton } from '../index';
+import type { Automaton, DEA, Document, FormalObject, NEA, StateId } from '../index';
 
 /** DEA aus Skript 2.3 (F = {B} laut Vorgabe; das Minus steht im Text als \-). */
 export const DEA_23 = String.raw`dea Skript23 {
@@ -53,7 +54,7 @@ export const FIXTURES: Record<string, string> = {
 };
 
 /** ID des Zustands mit dem angegebenen Namen. Wirft, wenn er fehlt. */
-export function idOf(obj: FormalObject, name: string): StateId {
+export function idOf(obj: { name: string; states: { id: StateId; name: string }[] }, name: string): StateId {
   const s = obj.states.find((st) => st.name === name);
   if (!s) throw new Error(`Zustand ${name} fehlt in ${obj.name}`);
   return s.id;
@@ -61,7 +62,7 @@ export function idOf(obj: FormalObject, name: string): StateId {
 
 /** Zustandsnamen zu einer Liste von IDs (fehlende IDs erscheinen als ?id). */
 export function namesOf(
-  obj: FormalObject,
+  obj: { states: { id: StateId; name: string }[] },
   ids: readonly StateId[] | null | undefined,
 ): string[] {
   return (ids ?? []).map((id) => obj.states.find((s) => s.id === id)?.name ?? `?${id}`);
@@ -70,6 +71,11 @@ export function namesOf(
 export function firstObject(doc: Document): FormalObject {
   const o = doc.objects[0];
   if (!o) throw new Error('Dokument ohne Objekt');
+  return o;
+}
+
+export function asAut(o: FormalObject): Automaton {
+  if (!isAutomaton(o)) throw new Error(`Zustandsmaschine erwartet, ist ${o.kind}`);
   return o;
 }
 

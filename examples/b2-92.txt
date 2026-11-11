@@ -1,0 +1,18 @@
+dea B2_92 {
+  alphabet a b
+  start A
+  accept C D G
+  A -a-> B
+  A -b-> F
+  B -a-> C
+  B -b-> E
+  C -a,b-> D
+  D -a-> C
+  D -b-> D
+  E -a,b-> E
+  F -a-> E
+  F -b-> G
+  G -a-> G
+  G -b-> C
+  layout A@0,0 B@180,-110 F@180,110 C@380,-110 E@380,40 G@380,170 D@580,-110
+}

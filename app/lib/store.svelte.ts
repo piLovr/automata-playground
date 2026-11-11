@@ -2,15 +2,16 @@ import LZString from 'lz-string';
 import {
   autoLayout,
   edit,
-  emptyAutomaton,
+  emptyObject,
   freshName,
+  isAutomaton,
   fromJSON,
   parseDocument,
   toJSON,
   type Automaton,
   type Document,
+  type FormalKind,
   type FormalObject,
-  type ObjectKind,
   type StateId,
 } from '../../core/index';
 import { examples } from './examples';
@@ -25,7 +26,8 @@ export interface BatchRow {
 }
 
 export type Tool = 'select' | 'state' | 'edge';
-export type PanelTab = 'table' | 'text' | 'batch';
+export type PanelTab = 'table' | 'text' | 'batch' | 'procs';
+export type ViewMode = 'single' | 'workspace';
 export type Theme = 'auto' | 'light' | 'dark';
 
 /** Kantengruppe im Graphen: alle Übergänge from → to. */
@@ -46,6 +48,8 @@ interface Persisted {
   words: Record<string, string>;
   batches: Record<string, BatchRow[]>;
   showLayout?: boolean;
+  view?: ViewMode;
+  texts?: Record<string, string>;
 }
 
 class AppStore {
@@ -58,10 +62,14 @@ class AppStore {
   panel = $state<PanelTab>('table');
   theme = $state<Theme>('auto');
   showLayout = $state(false);
+  /** Einzelansicht oder Sprach-Arbeitsfläche (Abschnitt 8). */
+  view = $state<ViewMode>('single');
 
   /** Eingabewort je Objektname (Rohtext). */
   words = $state<Record<string, string>>({});
   batches = $state<Record<string, BatchRow[]>>({});
+  /** Prüftext je egrep-Objekt (mehrzeilig, zeilenweise geprüft wie egrep). */
+  texts = $state<Record<string, string>>({});
   simStep = $state(0);
   simPlaying = $state(false);
   simSpeed = $state(2); // Schritte pro Sekunde
@@ -79,6 +87,11 @@ class AppStore {
 
   get obj(): FormalObject | undefined {
     return this.doc.objects[this.active];
+  }
+  /** Aktives Objekt, falls es eine Zustandsmaschine ist (Graph, Tabelle, Simulation). */
+  get aut(): Automaton | undefined {
+    const o = this.obj;
+    return o && isAutomaton(o) ? o : undefined;
   }
   get canUndo(): boolean {
     return this.#past.length > 0;
@@ -114,8 +127,15 @@ class AppStore {
     this.#scheduleSave();
   }
 
-  /** Ändert das aktive Objekt. Fehler aus den Edit-Funktionen werden als Hinweis gezeigt. */
-  update(fn: (o: FormalObject) => FormalObject, coalesce?: string): boolean {
+  /** Ändert das aktive Objekt, falls es ein Automat ist. Fehler der Edit-Funktionen werden als Hinweis gezeigt. */
+  update(fn: (o: Automaton) => FormalObject, coalesce?: string): boolean {
+    const o = this.aut;
+    if (!o) return false;
+    return this.updateAny((x) => fn(x as Automaton), coalesce);
+  }
+
+  /** Ändert das aktive Objekt beliebiger Art. */
+  updateAny(fn: (o: FormalObject) => FormalObject, coalesce?: string): boolean {
     const o = this.obj;
     if (!o) return false;
     let next: FormalObject;
@@ -172,13 +192,48 @@ class AppStore {
     this.#scheduleSave();
   }
 
-  addObject(kind: ObjectKind): void {
+  addObject(kind: FormalKind): void {
     const names = this.doc.objects.map((o) => o.name);
-    const prefix: Record<ObjectKind, string> = { dea: 'M', nea: 'N', mealy: 'Mealy', moore: 'Moore', nka: 'K', tm: 'T' };
+    const prefix: Record<FormalKind, string> = {
+      dea: 'M',
+      nea: 'N',
+      mealy: 'Mealy',
+      moore: 'Moore',
+      nka: 'K',
+      tm: 'T',
+      regex: 'R',
+      grammatik: 'G',
+      egrep: 'E',
+    };
     const name = freshName(names, prefix[kind]);
-    const obj = emptyAutomaton(kind, name);
+    const obj = emptyObject(kind, name);
     this.commit({ ...this.doc, objects: [...this.doc.objects, obj] }, { active: this.doc.objects.length });
     this.select([]);
+  }
+
+  /** Fügt ein fertiges Objekt an (Ergebnis eines Verfahrens); Name bei Konflikt frisch. */
+  insertObject(obj: FormalObject, opts: { activate?: boolean } = {}): string {
+    const names = this.doc.objects.map((o) => o.name);
+    const name = names.includes(obj.name) ? freshName(names, obj.name + '_') : obj.name;
+    const placed = withLayout({ ...obj, name });
+    const active = opts.activate === false ? this.active : this.doc.objects.length;
+    this.commit({ ...this.doc, objects: [...this.doc.objects, placed] }, { active });
+    if (opts.activate !== false) this.select([]);
+    return name;
+  }
+
+  /** Ersetzt das Objekt mit diesem Namen (Neuberechnung), Name bleibt. */
+  replaceObject(name: string, obj: FormalObject): void {
+    const i = this.doc.objects.findIndex((o) => o.name === name);
+    if (i < 0) return;
+    const objects = this.doc.objects.slice();
+    objects[i] = withLayout({ ...obj, name });
+    this.commit({ ...this.doc, objects });
+  }
+
+  setView(v: ViewMode): void {
+    this.view = v;
+    this.#scheduleSave();
   }
 
   removeActive(): void {
@@ -194,7 +249,7 @@ class AppStore {
       return;
     }
     this.#moveKeyed(o.name, name);
-    this.update((x) => ({ ...x, name }));
+    this.updateAny((x) => ({ ...x, name }));
   }
 
   loadExample(id: string): void {
@@ -207,6 +262,7 @@ class AppStore {
     const name = names.includes(incoming.name) ? freshName(names, incoming.name + '_') : incoming.name;
     const obj = withLayout({ ...incoming, name });
     if (ex.word !== undefined) this.words[name] = ex.word;
+    if (ex.testText !== undefined) this.texts[name] = ex.testText;
     this.simStep = 0;
     this.commit({ ...this.doc, objects: [...this.doc.objects, obj] }, { active: this.doc.objects.length });
     this.select([]);
@@ -233,6 +289,17 @@ class AppStore {
     this.#scheduleSave();
   }
 
+  get text(): string {
+    const o = this.obj;
+    return o ? (this.texts[o.name] ?? '') : '';
+  }
+  set text(v: string) {
+    const o = this.obj;
+    if (!o) return;
+    this.texts[o.name] = v;
+    this.#scheduleSave();
+  }
+
   get batch(): BatchRow[] {
     const o = this.obj;
     return o ? (this.batches[o.name] ?? []) : [];
@@ -248,6 +315,10 @@ class AppStore {
     if (from in this.words) {
       this.words[to] = this.words[from]!;
       delete this.words[from];
+    }
+    if (from in this.texts) {
+      this.texts[to] = this.texts[from]!;
+      delete this.texts[from];
     }
     if (from in this.batches) {
       this.batches[to] = this.batches[from]!;
@@ -274,6 +345,8 @@ class AppStore {
       words: { ...this.words },
       batches: JSON.parse(JSON.stringify(this.batches)),
       showLayout: this.showLayout,
+      view: this.view,
+      texts: { ...this.texts },
     };
   }
 
@@ -286,6 +359,8 @@ class AppStore {
     this.words = p.words ?? {};
     this.batches = p.batches ?? {};
     this.showLayout = p.showLayout ?? false;
+    this.view = p.view ?? 'single';
+    this.texts = p.texts ?? {};
     this.externalRevision++;
     return true;
   }
@@ -366,7 +441,7 @@ class AppStore {
 
   #pruneSelection(): void {
     const o = this.obj;
-    if (!o) {
+    if (!o || !isAutomaton(o)) {
       this.selStates = [];
       this.selEdges = [];
       return;
@@ -380,7 +455,7 @@ class AppStore {
 
 /** Ergänzt fehlende Positionen per autoLayout, vorhandene bleiben. */
 export function withLayout<T extends FormalObject>(o: T): T {
-  if (o.states.every((s) => s.pos)) return o;
+  if (!isAutomaton(o) || o.states.every((s) => s.pos)) return o;
   const pos = autoLayout(o as Automaton, { keep: true });
   return edit.moveStates(o, pos) as T;
 }

@@ -64,6 +64,15 @@
   --font-ui: 'Grotesk', ui-sans-serif, system-ui, sans-serif;
   --font-math: 'Serif', 'Iowan Old Style', Georgia, serif;
   --font-mono: 'Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  /* Klassenfarben (Minimierung, Potenzmenge); immer zusammen mit Klassennummer gezeigt */
+  --cls-0: #2f5bd0;
+  --cls-1: #2d7a4b;
+  --cls-2: #9a6500;
+  --cls-3: #8a3fb0;
+  --cls-4: #0f7f8c;
+  --cls-5: #b3262f;
+  --cls-6: #5b6472;
+  --cls-7: #a8559a;
   color-scheme: light;
 }
 
@@ -91,6 +100,22 @@
     --warn: #f0b858;
     --warn-soft: rgba(240, 184, 88, 0.14);
     --shadow: 0 1px 0 rgba(0, 0, 0, 0.3), 0 10px 30px -10px rgba(0, 0, 0, 0.6);
+  --cls-0: #7fa2ff;
+  --cls-1: #6fcf97;
+  --cls-2: #f0b858;
+  --cls-3: #c99af0;
+  --cls-4: #5fd3df;
+  --cls-5: #ff7a80;
+  --cls-6: #aab2c0;
+  --cls-7: #f09ad8;
+    --cls-0: #7fa2ff;
+    --cls-1: #6fcf97;
+    --cls-2: #f0b858;
+    --cls-3: #c99af0;
+    --cls-4: #5fd3df;
+    --cls-5: #ff7a80;
+    --cls-6: #aab2c0;
+    --cls-7: #f09ad8;
     color-scheme: dark;
   }
 }

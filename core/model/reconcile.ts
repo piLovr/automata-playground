@@ -1,4 +1,5 @@
-import type { FormalObject, State } from './types';
+import { isAutomaton } from './validate';
+import type { Automaton, FormalObject, Grammar, Production, State } from './types';
 import { labelKey, numericSuffix, transitionsOf, type AnyTransition } from './util';
 
 /**
@@ -6,7 +7,43 @@ import { labelKey, numericSuffix, transitionsOf, type AnyTransition } from './ut
  * und Positionen (wenn `next` keine hat). Neue Elemente bekommen IDs, die in `prev` nicht vorkommen.
  */
 export function reconcile(prev: FormalObject | undefined, next: FormalObject): FormalObject {
-  if (!prev) return next;
+  if (!prev || prev.kind === 'regex' || prev.kind === 'egrep') return next;
+  if (prev.kind === 'grammatik') return next.kind === 'grammatik' ? reconcileGrammar(prev, next) : next;
+  if (!isAutomaton(next)) return next;
+  return reconcileAutomaton(prev, next);
+}
+
+/** Produktionen behalten die ID einer prev-Produktion mit gleichem (left, right); neue IDs kollidieren nicht mit prev. */
+function reconcileGrammar(prev: Grammar, next: Grammar): Grammar {
+  const queues = new Map<string, string[]>();
+  const prevIds = new Set<string>();
+  for (const p of prev.productions) {
+    prevIds.add(p.id);
+    const key = JSON.stringify([p.left, p.right]);
+    const q = queues.get(key) ?? [];
+    q.push(p.id);
+    queues.set(key, q);
+  }
+  const reserved = new Set(next.productions.map((p) => p.id));
+  const claimed = new Set<string>();
+  let counter = 0;
+  for (const id of [...prevIds, ...reserved]) counter = Math.max(counter, numericSuffix(id, 'p') + 1);
+  const productions: Production[] = next.productions.map((p) => {
+    let id = queues.get(JSON.stringify([p.left, p.right]))?.shift();
+    if (id === undefined) {
+      id = p.id;
+      if (prevIds.has(id) || claimed.has(id)) {
+        while (prevIds.has(`p${counter}`) || claimed.has(`p${counter}`) || reserved.has(`p${counter}`)) counter++;
+        id = `p${counter}`;
+      }
+    }
+    claimed.add(id);
+    return { ...p, id };
+  });
+  return { ...next, productions };
+}
+
+function reconcileAutomaton(prev: Automaton, next: Automaton): Automaton {
   const prevStateByName = new Map<string, State>();
   for (const s of prev.states) if (!prevStateByName.has(s.name)) prevStateByName.set(s.name, s);
   const prevNames = new Map(prev.states.map((s) => [s.id, s.name]));
@@ -76,5 +113,5 @@ export function reconcile(prev: FormalObject | undefined, next: FormalObject): F
     accept: next.accept.map(map),
     ...(next.kind === 'tm' ? { reject: next.reject.map(map) } : {}),
     transitions,
-  } as FormalObject;
+  } as Automaton;
 }

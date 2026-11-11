@@ -6,7 +6,7 @@
   import { sim } from '../lib/sim.svelte';
   import { parseInputWord, showSym, showWord } from '../lib/format';
 
-  const obj = $derived(store.obj as NKA | TM | undefined);
+  const obj = $derived(store.aut as NKA | TM | undefined);
   const isTm = $derived(obj?.kind === 'tm');
   const MOVE = { [-1]: 'L', 0: 'N', 1: 'R' } as Record<number, string>;
 

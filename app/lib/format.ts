@@ -2,7 +2,12 @@ import { type Diagnostic, type FormalObject, type StateId, type Sym, type Word }
 import { t } from '../i18n';
 
 export function stateName(obj: FormalObject | undefined, id: StateId): string {
-  return obj?.states.find((s) => s.id === id)?.name ?? '?';
+  if (!obj || !('states' in obj)) return '?';
+  return obj.states.find((s) => s.id === id)?.name ?? '?';
+}
+
+function hasState(obj: FormalObject | undefined, id: string): boolean {
+  return !!obj && 'states' in obj && obj.states.some((s) => s.id === id);
 }
 
 /** Symbol zur Anzeige (ohne Text-Maskierung). */
@@ -96,8 +101,10 @@ export function diagnosticText(d: Diagnostic, obj?: FormalObject): string {
   if (typeof p.what === 'string') p.what = t(`what.${p.what}`);
   if (Array.isArray(p.label)) p.label = showWord(p.label as Word);
   if (typeof p.symbol === 'string') p.symbol = showSym(p.symbol);
-  if (d.code === 'dea.nondeterministic') p.state = name(p.state);
-  if (d.code === 'dea.missing' && Array.isArray(p.pairs)) {
+  if (d.code === 'dea.nondeterministic' || d.code.startsWith('tm.')) p.state = name(p.state);
+  if (Array.isArray(p.states)) p.states = (p.states as unknown[]).map(name).join(', ');
+  if (Array.isArray(p.symbols)) p.symbols = (p.symbols as Sym[]).map(showSym).join(', ');
+  if ((d.code === 'dea.missing' || d.code === 'algo.incomplete') && Array.isArray(p.pairs)) {
     const pairs = p.pairs as { state: StateId; symbol: Sym }[];
     const shown = pairs.slice(0, 6).map((x) => `(${name(x.state)}, ${showSym(x.symbol)})`);
     p.pairs = shown.join(', ') + (pairs.length > 6 ? ` … (+${pairs.length - 6})` : '');
@@ -114,7 +121,7 @@ export function explainText(obj: FormalObject | undefined, key: string, params: 
     else if (k === 'push' && Array.isArray(v)) p[k] = showWord(v as Word);
     else if ((k === 'symbol' || k === 'read' || k === 'write' || k === 'top' || k === 'out') && typeof v === 'string') p[k] = showSym(v);
     else if (Array.isArray(v)) p[k] = showSet(obj, v as StateId[]);
-    else if (typeof v === 'string' && obj?.states.some((s) => s.id === v)) p[k] = stateName(obj, v);
+    else if (typeof v === 'string' && hasState(obj, v)) p[k] = stateName(obj, v);
     else p[k] = v;
   }
   return t(`explain.${key}`, p);

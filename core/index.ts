@@ -12,7 +12,11 @@ export { parseWord, printWord, printSymbol } from './text/word';
 export { toJSON, fromJSON } from './json/json';
 
 // Modell
-export { validate, emptyAutomaton } from './model/validate';
+export { validate, emptyAutomaton, emptyObject, isAutomaton } from './model/validate';
+export { objectHash, isStale } from './model/hash';
+export { grammarType, parseGrammarWord, printGrammarWord } from './model/grammar';
+export { parseRegex, printRegex, regexSymbols, regexSize, subexprAt, regexSpans } from './model/regex';
+export { parseEgrep, printEgrepAst } from './model/egrep';
 export { reconcile } from './model/reconcile';
 export { freshName } from './model/util';
 export * as edit from './model/edit';
@@ -26,3 +30,6 @@ export { autoLayout } from './layout/layout';
 // Simulation
 export { simulate, runBatch } from './sim/batch';
 export { epsilonClosure } from './sim/nea';
+
+export * from './algo/index';
+export { METHOD_IDS } from './model/methods';

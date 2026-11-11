@@ -1,12 +1,12 @@
 <script lang="ts">
-  import { edit, freshName, parseWord, type FormalObject, type StateId, type Sym, type Word } from '../../core/index';
+  import { edit, freshName, parseWord, type Automaton, type FormalObject, type StateId, type Sym, type Word } from '../../core/index';
   import { store, withLayout } from '../lib/store.svelte';
   import { sim } from '../lib/sim.svelte';
   import { showSym, showWord, splitUnescaped } from '../lib/format';
   import { t } from '../i18n';
   import RowTable from './RowTable.svelte';
 
-  const obj = $derived(store.obj);
+  const obj = $derived(store.aut);
   /** Deterministische Tabelle Z × X: DEA, Mealy, Moore. */
   const isDea = $derived(obj?.kind === 'dea' || obj?.kind === 'mealy' || obj?.kind === 'moore');
   const isMealy = $derived(obj?.kind === 'mealy');
@@ -53,7 +53,7 @@
     return w.length === 1 && label === w[0];
   }
 
-  function cellTargets(o: FormalObject, from: StateId, w: Word): StateId[] {
+  function cellTargets(o: Automaton, from: StateId, w: Word): StateId[] {
     return o.transitions.filter((x) => x.from === from && matches(o, x.label, w)).map((x) => x.to);
   }
 
@@ -67,7 +67,7 @@
   }
 
   /** Namen in IDs übersetzen; unbekannte Namen werden als neue Zustände angelegt. */
-  function resolve(o: FormalObject, names: string[]): { o: FormalObject; ids: StateId[] } {
+  function resolve(o: Automaton, names: string[]): { o: Automaton; ids: StateId[] } {
     const ids: StateId[] = [];
     for (const name of names) {
       const hit = o.states.find((s) => s.name === name);

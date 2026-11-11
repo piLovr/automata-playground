@@ -60,9 +60,9 @@
   const byId = $derived(new Map(shown.map((n) => [n.id, n])));
 
   function viaLabel(n: TreeNode): string {
-    if (!n.via || !store.obj) return '';
-    const tr = store.obj.transitions.find((x) => x.id === n.via);
-    return tr ? showLabel(store.obj.kind, tr.label) : '';
+    if (!n.via || !store.aut) return '';
+    const tr = store.aut.transitions.find((x) => x.id === n.via);
+    return tr ? showLabel(store.aut.kind, tr.label) : '';
   }
 
   const GLYPH: Record<string, string> = { accepting: '✓', rejecting: '✗', dead: '†', cycle: '↻', limit: '…', open: '' };
@@ -93,9 +93,9 @@
           onclick={() => (onselect ? onselect(n.id) : (store.simStep = n.pos))}
           onkeydown={() => {}}
         >
-          <title>{stateName(store.obj, n.state)} · {n.pos} {t('sim.read')}{n.status !== 'open' ? ` · ${t(`tree.${n.status}`)}` : ''}</title>
+          <title>{stateName(store.aut, n.state)} · {n.pos} {t('sim.read')}{n.status !== 'open' ? ` · ${t(`tree.${n.status}`)}` : ''}</title>
           <circle r="12" />
-          <text class="math" text-anchor="middle" dominant-baseline="central">{stateName(store.obj, n.state)}</text>
+          <text class="math" text-anchor="middle" dominant-baseline="central">{stateName(store.aut, n.state)}</text>
           {#if GLYPH[n.status]}<text class="glyph" x="17" dominant-baseline="central">{GLYPH[n.status]}</text>{/if}
           {#if stackOf && n.stack}<text class="stk mono" y="22" text-anchor="middle">{n.stack.map(showSym).join('')}</text>{/if}
         </g>

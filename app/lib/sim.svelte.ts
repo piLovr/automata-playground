@@ -1,4 +1,4 @@
-import { runBatch, simulate, validate, type Diagnostic, type SimStep, type Trace, type Word } from '../../core/index';
+import { accepts, runBatch, simulate, validate, type BatchResult, type Diagnostic, type SimStep, type Trace, type Word } from '../../core/index';
 import { store, type BatchRow } from './store.svelte';
 import { parseInputWord } from './format';
 
@@ -10,7 +10,7 @@ class SimView {
   });
 
   trace = $derived.by((): Trace | null => {
-    const o = store.obj;
+    const o = store.aut;
     const w = this.parsed.word;
     if (!o || !w || o.start === null) return null;
     return simulate(o, w, { stepLimit: store.simLimit });
@@ -26,7 +26,7 @@ class SimView {
   steps = $derived.by((): SimStep[] => {
     const tr = this.trace;
     if (!tr) return [];
-    if (this.branch === null || !tr.tree || store.obj?.kind !== 'nka') return tr.steps;
+    if (this.branch === null || !tr.tree || store.aut?.kind !== 'nka') return tr.steps;
     const byId = new Map(tr.tree.map((n) => [n.id, n]));
     const path = [];
     for (let n = byId.get(this.branch); n; n = n.parent === null ? undefined : byId.get(n.parent)) path.unshift(n);
@@ -67,7 +67,15 @@ class SimView {
     const rows: BatchRow[] = store.batch;
     const parsed = rows.map((r) => parseInputWord(r.input));
     const valid = parsed.flatMap((w, i) => (w ? [{ word: w, expected: rows[i]!.expected }] : []));
-    const results = runBatch(o, valid, { stepLimit: store.simLimit });
+    const aut = store.aut;
+    // Ausdruck und Grammatik: Zugehörigkeit über den Kern (intern als DEA).
+    const results: BatchResult[] = aut
+      ? runBatch(aut, valid, { stepLimit: store.simLimit })
+      : valid.map(({ word, expected }) => {
+          const a = accepts(o, word);
+          const result = a === null ? 'stuck' : a ? 'accepted' : 'rejected';
+          return { word, expected, result, ok: expected === null || a === null ? null : a === expected };
+        });
     let k = 0;
     return rows.map((r, i) => (parsed[i] ? { row: r, res: results[k++]! } : { row: r, res: null }));
   });

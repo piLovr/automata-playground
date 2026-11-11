@@ -120,7 +120,7 @@ describe('dev typen: Prüfung, Edit, Reconcile', () => {
   it('reconcile behält IDs', () => {
     const prev = parseFirst(ALL_FIXTURES.NKA_46);
     const next = parseFirst(ALL_FIXTURES.NKA_46.replace('start z0', 'start z0\n  accept z+ z0'));
-    const rec = reconcile(prev, next);
+    const rec = reconcile(prev, next) as Automaton;
     expect(rec.transitions.map((t) => t.id)).toEqual(prev.transitions.map((t) => t.id));
   });
 });

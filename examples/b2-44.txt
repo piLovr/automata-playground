@@ -1,0 +1,13 @@
+grammatik B2_44 {
+  nichtterminale X0 X1 X2 X3 X4 X5 X6 X7
+  terminale 0 1 - . E
+  start X0
+  X0 -> -X1 | X1
+  X1 -> 0X2 | 1X2
+  X2 -> 0X2 | 1X2 | ε | X3
+  X3 -> .0X4 | .1X4 | X5
+  X4 -> 0X4 | 1X4 | ε | X5
+  X5 -> E-X6 | EX6
+  X6 -> 0X7 | 1X7
+  X7 -> 0X7 | 1X7 | ε
+}

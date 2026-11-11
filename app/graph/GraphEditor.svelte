@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { edit, autoLayout, freshName, type FormalObject, type Point, type StateId } from '../../core/index';
+  import { edit, autoLayout, freshName, type Automaton, type Point, type StateId } from '../../core/index';
   import { store, edgeKey } from '../lib/store.svelte';
   import { sim } from '../lib/sim.svelte';
   import { editLabels, parseLabelsFor, showLabel, LABEL_HINT, LABEL_HELP } from '../lib/labels';
@@ -45,7 +45,7 @@
   let inline = $state<Inline | null>(null);
   let inlineError = $state('');
 
-  const obj = $derived(store.obj);
+  const obj = $derived(store.aut);
   const kind = $derived(obj?.kind ?? 'dea');
   /** Typen mit akzeptierenden Zuständen (Mealy/Moore haben stattdessen Ausgaben). */
   const hasAccept = $derived(kind !== 'mealy' && kind !== 'moore');
@@ -335,7 +335,7 @@
     return id;
   }
 
-  function labelText(o: FormalObject, from: StateId, to: StateId): string {
+  function labelText(o: Automaton, from: StateId, to: StateId): string {
     return editLabels(
       o.kind,
       o.transitions.filter((x) => x.from === from && x.to === to).map((x) => x.label),

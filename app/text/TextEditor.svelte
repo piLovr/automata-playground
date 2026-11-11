@@ -35,8 +35,13 @@
     'bandalphabet',
     'blank',
     'reject',
+    'nichtterminale',
+    'terminale',
+    'herkunft',
+    'aus',
+    'entspricht',
   ]);
-  const KINDS = new Set(['dea', 'nea', 'mealy', 'moore', 'nka', 'tm']);
+  const KINDS = new Set(['dea', 'nea', 'mealy', 'moore', 'nka', 'tm', 'regex', 'grammatik']);
   const language = StreamLanguage.define<{ inLabel: boolean; afterKind: boolean }>({
     startState: () => ({ inLabel: false, afterKind: false }),
     token(stream, st) {
@@ -60,7 +65,8 @@
       }
       if (stream.match(/^\\./u)) return 'escape';
       if (stream.match(/^<[\p{L}\p{N}_]+>/u)) return 'string';
-      if (stream.match('->')) return 'operator';
+      if (stream.match('->') || stream.match('→') || stream.match('<-')) return 'operator';
+      if (stream.match(/^[|*()=∅]/u)) return 'operator';
       if (stream.match(/^-(?!>)/)) {
         st.inLabel = true;
         return 'operator';
@@ -120,7 +126,7 @@
   });
 
   function printed(): string {
-    return printDocument(store.doc, { layout: store.showLayout });
+    return printDocument(store.doc, { layout: store.showLayout, origin: store.showLayout });
   }
 
   /** Text → Modell. Bei Syntaxfehlern bleibt das Modell auf dem letzten gültigen Stand. */
@@ -143,12 +149,17 @@
 
     if (errorCount === 0) {
       const prev = new Map(store.doc.objects.map((o) => [o.name, o]));
-      const objects = doc.objects.map((o) => withLayout(reconcile(prev.get(o.name), o)));
+      // Ausgeblendete Herkunft bleibt erhalten, solange der Text keine eigene angibt.
+      const objects = doc.objects.map((o) => {
+        const before = prev.get(o.name);
+        const r = withLayout(reconcile(before, o));
+        return !store.showLayout && !r.origin && before?.origin && before.kind === r.kind ? { ...r, origin: before.origin } : r;
+      });
       const next: Document = { version: 1, objects };
       // Modellwarnungen (z. B. fehlende DEA-Übergänge) an der Kopfzeile des Objekts zeigen.
       let w = 0;
       for (const o of objects) {
-        const head = text.search(new RegExp(`^\\s*(dea|nea|mealy|moore|nka|tm)\\s+${o.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'm'));
+        const head = text.search(new RegExp(`^\\s*(dea|nea|mealy|moore|nka|tm|regex|grammatik)\\s+${o.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'm'));
         for (const d of validate(o)) {
           w++;
           const from = head < 0 ? 0 : head + (text.slice(head).match(/^\s*/)?.[0].length ?? 0);

@@ -1,14 +1,18 @@
-(* Textsprache M1; Präzisierungen siehe docs/kern-spec-m1.md *)
+(* Textsprache M1 und M2; Präzisierungen siehe docs/kern-spec-m1.md, kern-spec-typen.md, kern-spec-m2.md *)
 document    = { ws | comment | object } ;
-object      = kind , ws , name , ws? , "{" , body , "}" ;
-kind        = "dea" | "nea" ;
+object      = automaton | regexobj | grammarobj ;
+
+(* ---- Automaten (dea nea mealy moore nka tm) ---- *)
+automaton   = kind , ws , name , ws? , "{" , body , "}" ;
+kind        = "dea" | "nea" | "mealy" | "moore" | "nka" | "tm" ;
 body        = { ws | comment | statement } ;
-statement   = alphabet | states | start | accept | layout | transition ;
+statement   = alphabet | states | start | accept | layout | typespecific | origin | transition ;
 alphabet    = "alphabet" , { ws , symbol } ;
 states      = "states" , { ws , state } ;
 start       = "start" , ws , state ;
 accept      = "accept" , { ws , state } ;
 layout      = "layout" , { ws , state , "@" , number , "," , number } ;
+typespecific = (* ausgabealphabet, out, keller, kelleralphabet, bandalphabet, blank, reject; siehe kern-spec-typen.md *) ;
 transition  = state , ws , "-" , labels , "->" , ws , state ;
 labels      = label , { ws? , "," , ws? , label } ;
 label       = "ε" | "eps" | symbol , { symbol } ;
@@ -17,9 +21,64 @@ plainchar   = (* jedes Zeichen außer Leerraum und - , < > # \ { } ε *) ;
 escchar     = (* jedes Zeichen, z. B. \- \, \< \> \# \\ \{ \} \ε und "\ " für Leerzeichen *) ;
 ident       = identchar , { identchar } ;
 state       = statechar1 , { statechar } ;
-statechar1  = letter | digit | "_" | "+" | "'" ;
+statechar1  = letter | digit | "_" | "+" | "'" | "∅" ;
 statechar   = statechar1 | "-" | "−" ;
 name        = state ;
 number      = [ "-" ] , digit , { digit } , [ "." , { digit } ] ;
 comment     = "#" , { (* bis Zeilenende *) } ;
 (* alphabet, states, accept, layout reichen bis zum Zeilenende; start nimmt genau einen Namen. *)
+
+(* ---- Regulärer Ausdruck (2.21, 2.22) ---- *)
+regexobj    = "regex" , ws , name , ws? , ( "=" , regex , eol
+            | "{" , { ws | comment | alphabet | "=" , regex , eol | origin } , "}" ) ;
+(* Kurzform: Ausdruck bis Zeilenende (Kommentar # beendet). Blockform: "=" höchstens einmal,
+   Ausdruck bis Zeilenende oder "}"; Kurzform ohne herkunft. *)
+regex       = union ;
+union       = concat , { "|" , concat } ;           (* linksgeklammert: R1|R2|R3 = ((R1|R2)|R3) *)
+concat      = starred , { starred } ;               (* linksgeklammert *)
+starred     = atom , { "*" } ;                      (* 0** erlaubt *)
+atom        = rsymbol | "∅" | "\0" | "ε" | "\e" | "(" , regex , ")" ;
+(* Leerraum im Ausdruck wird ignoriert. ε und \e sind Abkürzung für ∅* (Entscheidung 1);
+   "eps" ist im Ausdruck KEIN ε, sondern drei Symbole. *)
+rsymbol     = symbol (* wie oben; zusätzlich müssen | ( ) * ∅ maskiert werden: \| \( \) \* \∅ *) ;
+(* Fehler (Codes): (|1) und |∅| regex.missingOperand; ()01 regex.emptyParens; ((01) regex.unbalanced;
+   *(01) regex.missingOperand; sonstige Zeichen syntax.unexpected. *)
+
+(* ---- Grammatik (2.34) ---- *)
+grammarobj  = "grammatik" , ws , name , ws? , "{" , { ws | comment | gstmt } , "}" ;
+gstmt       = "nichtterminale" , { ws , gsym }
+            | "terminale" , { ws , gsym }
+            | "start" , ws , gsym
+            | production | origin ;
+gsym        = (* durch Leerraum getrenntes Token beliebiger Länge; \ maskiert; <name> = name *) ;
+production  = gword , ws? , ( "->" | "→" ) , ws? , alt , { ws? , "|" , ws? , alt } ;   (* zeilengebunden *)
+alt         = "ε" | "eps" | gword ;
+gword       = gsymbol , { ws? , gsymbol } ;          (* Leerraum innerhalb einer Seite wird ignoriert *)
+gsymbol     = (* zuerst das längste deklarierte Symbol (N ∪ T) an dieser Stelle, sonst <name>, \x oder ein Zeichen;
+                 "-" ist Symbol, außer direkt vor ">"; "|" trennt Alternativen (\| als Symbol) *) ;
+(* Deklarationen gelten für die ganze Grammatik (zwei Durchgänge).
+   Ohne nichtterminale: N = Symbole mit Großbuchstaben am Anfang plus Startsymbol (Reihenfolge des ersten Auftretens);
+   ohne terminale: T = alle übrigen Symbole; ohne start: linke Seite der ersten Produktion, falls einzelnes Nichtterminal.
+   Produktions-IDs p0, p1, … je Alternative in Textreihenfolge. *)
+
+(* ---- egrep-Regex (Kapitel 3) ---- *)
+egrepobj    = "egrep" , ws , name , ws? , ( "=" , pattern , eol
+            | "{" , { ws | comment | "alphabet" , { ws , symbol } | "=" , pattern | origin } , "}" ) ;
+pattern     = (* Rest der Zeile, roh gespeichert (Kommentarzeichen und "}" gehören zum Muster; Leerraum am Rand entfällt) *) ;
+(* Muster: alt = concat { "|" concat } ; concat = { piece } ; piece = atom { quant } ;
+   quant = "*" | "+" | "?" | "{" n "}" | "{" n ",}" | "{" n "," m "}" ;
+   atom = char | "." | "^" | "$" | class | "(" alt ")" | "\" digit | "\" char ;
+   class = "[" ["^"] ( "]" | item ) { item } "]" ; item = char "-" char | "[:" name ":]" | char. *)
+
+(* ---- Herkunft (alle Objektarten, nur in Blöcken) ---- *)
+origin      = "herkunft" , ws , method , ws , "aus" , { ws , name , "@" , hex } , eol ,
+              { "entspricht" , ws , elem , ws , "<-" , ws , digit , { digit } , { ws , elem } , eol } ;
+method      = "nea2dea" | "splitWords" | "removeEpsilon" | "powerset" | "dea2regex" | "dea2regexElim"
+            | "regex2grammar" | "grammar2nea" | "dea2grammar" | "thompson" | "complement"
+            | "intersection" | "union" | "reachable" | "minimize" | "mealy2moore" | "moore2mealy"
+            | "egrep2regex" ;
+elem        = "z:" , state          (* Zustand; Ziel: dieses Objekt, Quelle: Quellobjekt *)
+            | "k:" , token          (* Übergangs-ID *)
+            | "n:" , symbol         (* Nichtterminal *)
+            | "p:" , token          (* Produktions-ID *)
+            | "t:r" , { "0" | "1" } ;   (* Teilausdruck, Pfad ab der Wurzel *)

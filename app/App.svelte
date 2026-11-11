@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { edit, fromJSON, parseDocument, printDocument, toJSON, type StateId } from '../core/index';
+  import { edit, fromJSON, parseDocument, printDocument, toJSON, grammarType, type FormalKind, type StateId } from '../core/index';
   import { store } from './lib/store.svelte';
   import { sim } from './lib/sim.svelte';
   import { examples } from './lib/examples';
@@ -11,17 +11,41 @@
   import SimDeck from './sim/SimDeck.svelte';
   import BatchPanel from './sim/BatchPanel.svelte';
   import Menu from './ui/Menu.svelte';
+  import RegexView from './expr/RegexView.svelte';
+  import GrammarView from './expr/GrammarView.svelte';
+  import EgrepView from './expr/EgrepView.svelte';
+  import ExprDeck from './expr/ExprDeck.svelte';
+  import ProcPanel from './procs/ProcPanel.svelte';
+  import StepStage from './procs/StepStage.svelte';
+  import StepDeck from './procs/StepDeck.svelte';
+  import Workspace from './workspace/Workspace.svelte';
+  import { procs } from './lib/procs.svelte';
+  import { hl } from './lib/hl.svelte';
+  import { statesOf } from './lib/corr';
 
   store.init();
 
   let graph: ReturnType<typeof GraphEditor> | undefined = $state();
   let hover = $state<StateId | null>(null);
-  const highlight = $derived(new Set(hover ? [hover] : []));
+  /** Zustand aus der Simulation (Baum, Verlauf) plus Entsprechungen über die Herkunftskette. */
+  const highlight = $derived.by(() => {
+    const s = statesOf(hl.keysFor(store.obj?.name ?? ''));
+    if (hover) s.add(hover);
+    return s;
+  });
   let sideWidth = $state(440);
   let showKeys = $state(false);
   let fileInput: HTMLInputElement | undefined = $state();
 
   const obj = $derived(store.obj);
+  const aut = $derived(store.aut);
+  /** Reiter je Objektart; Ausdruck und Grammatik haben keine Tabelle. */
+  const tabs = $derived(
+    (aut ? ['table', 'text', 'batch', 'procs'] : ['text', 'batch', 'procs']) as (typeof store.panel)[],
+  );
+  const panel = $derived(tabs.includes(store.panel) ? store.panel : 'text');
+  const NEW_KINDS: FormalKind[] = ['dea', 'nea', 'regex', 'grammatik', 'egrep', 'mealy', 'moore', 'nka', 'tm'];
+  const gtype = $derived(obj?.kind === 'grammatik' ? grammarType(obj) : null);
 
   $effect(() => {
     const root = document.documentElement;
@@ -179,12 +203,9 @@
     <Menu title={t('menu.new')}>
       {#snippet label()}<span class="plus">+</span>{/snippet}
       {#snippet children(close)}
-        <button class="item" onclick={() => (store.addObject('dea'), close())}>{t('menu.new.dea')}</button>
-        <button class="item" onclick={() => (store.addObject('nea'), close())}>{t('menu.new.nea')}</button>
-        <button class="item" onclick={() => (store.addObject('mealy'), close())}>{t('menu.new.mealy')}</button>
-        <button class="item" onclick={() => (store.addObject('moore'), close())}>{t('menu.new.moore')}</button>
-        <button class="item" onclick={() => (store.addObject('nka'), close())}>{t('menu.new.nka')}</button>
-        <button class="item" onclick={() => (store.addObject('tm'), close())}>{t('menu.new.tm')}</button>
+        {#each NEW_KINDS as k (k)}
+          <button class="item" onclick={() => (store.addObject(k), close())}>{t(`menu.new.${k}`)}</button>
+        {/each}
         <hr />
         <p class="menu-head">Beispiele</p>
         {#each examples as ex (ex.id)}
@@ -194,6 +215,11 @@
         {/each}
       {/snippet}
     </Menu>
+
+    <div class="viewmode" role="group" aria-label={t('ws.mode')}>
+      <button aria-pressed={store.view === 'single'} onclick={() => store.setView('single')}>{t('ws.single')}</button>
+      <button aria-pressed={store.view === 'workspace'} onclick={() => (procs.close(), store.setView('workspace'))}>{t('ws.workspace')}</button>
+    </div>
 
     <div class="actions">
       <button class="btn ghost icon" onclick={() => store.undo()} disabled={!store.canUndo} title="{t('menu.undo')} (Strg+Z)" aria-label={t('menu.undo')}>
@@ -235,9 +261,16 @@
     </div>
   </header>
 
+  {#if store.view === 'workspace'}
+  <div class="ws-area"><Workspace /></div>
+  {:else}
   <!-- Zeichenfläche -->
   <main class="stage">
-    {#if obj}
+    {#if procs.session}
+      <StepStage />
+    {:else if obj && !aut}
+      {#if obj.kind === 'regex'}<RegexView />{:else if obj.kind === 'egrep'}<EgrepView />{:else}<GrammarView />{/if}
+    {:else if aut}
       <GraphEditor bind:this={graph} {highlight} />
 
       <div class="palette" role="toolbar" aria-label="Werkzeuge">
@@ -267,7 +300,8 @@
         </button>
         <button class="tool" onclick={() => graph?.zoom(1.2)} title={t('tool.zoomIn')} aria-label={t('tool.zoomIn')}>+</button>
       </div>
-
+    {/if}
+    {#if obj && !procs.session}
       <div class="obj-menu">
         <Menu align="right">
           {#snippet label()}<span class="kind-long">{t(`kind.${obj.kind}.long`)}</span>{/snippet}
@@ -287,7 +321,8 @@
           {/snippet}
         </Menu>
       </div>
-    {:else}
+    {/if}
+    {#if !obj}
       <div class="nothing">
         <p>Noch kein Objekt.</p>
         <div class="row">
@@ -302,7 +337,31 @@
   <!-- Seitenleiste -->
   <div class="resizer" role="separator" aria-orientation="vertical" onpointerdown={startResize}></div>
   <aside class="side">
-    {#if obj}
+    {#if obj && !aut}
+      <section class="definition" aria-label={t('panel.definition')}>
+        <p class="tuple math">{t(`def.${obj.kind}`)}</p>
+        <dl class="math">
+          {#if obj.kind === 'egrep'}
+            <dt>A</dt>
+            <dd class="mono-set">{obj.alphabet.length ? set(obj.alphabet.map(showSym)) : t('egrep.alphabetAuto')}</dd>
+          {:else if obj.kind === 'regex'}
+            <dt>A</dt>
+            <dd class="mono-set">{set(obj.alphabet.map(showSym))}</dd>
+          {:else if obj.kind === 'grammatik'}
+            <dt>N</dt>
+            <dd class="mono-set">{set(obj.nonterminals.map(showSym))}</dd>
+            <dt>T</dt>
+            <dd class="mono-set">{set(obj.terminals.map(showSym))}</dd>
+            <dt>S</dt>
+            <dd>{obj.start ? showSym(obj.start) : '—'}</dd>
+            <dt>Typ</dt>
+            <dd>{gtype?.type ?? '—'}</dd>
+          {/if}
+        </dl>
+      </section>
+    {/if}
+    {#if aut}
+      {@const obj = aut}
       <section class="definition" aria-label={t('panel.definition')}>
         <p class="tuple math">{t(`def.${obj.kind}`)}</p>
         <dl class="math">
@@ -359,10 +418,12 @@
           {/if}
         </dl>
       </section>
-
+    {/if}
+    {#if obj}
       <div class="tabs" role="tablist">
-        {#each [['table', t('panel.table')], ['text', t('panel.text')], ['batch', t('panel.batch')]] as [id, label] (id)}
-          <button role="tab" aria-selected={store.panel === id} class:on={store.panel === id} onclick={() => (store.panel = id as typeof store.panel)}>
+        {#each tabs as id (id)}
+          {@const label = t(`panel.${id}`)}
+          <button role="tab" aria-selected={panel === id} class:on={panel === id} onclick={() => (store.panel = id)}>
             {label}
             {#if id === 'batch' && sim.batch.some((r) => r.res?.ok === false || r.res === null)}<span class="badge bad">!</span>{/if}
           </button>
@@ -370,10 +431,12 @@
       </div>
 
       <div class="panel">
-        {#if store.panel === 'table'}
+        {#if panel === 'table'}
           <TableEditor />
-        {:else if store.panel === 'text'}
+        {:else if panel === 'text'}
           <TextEditor />
+        {:else if panel === 'procs'}
+          <ProcPanel />
         {:else}
           <BatchPanel />
         {/if}
@@ -397,8 +460,9 @@
 
   <!-- Simulation -->
   <footer class="deck">
-    {#if obj}<SimDeck onhover={(s) => (hover = s)} />{/if}
+    {#if procs.session}<StepDeck />{:else if aut}<SimDeck onhover={(s) => (hover = s)} />{:else if obj}<ExprDeck />{/if}
   </footer>
+  {/if}
 
   {#if store.toast}
     {#key store.toast.id}
@@ -457,6 +521,35 @@
   }
 
   /* Kopfleiste */
+  .ws-area {
+    grid-row: 2 / 4;
+    grid-column: 1 / 4;
+    min-height: 0;
+  }
+  .viewmode {
+    display: inline-flex;
+    flex-shrink: 0;
+    padding: 2px;
+    border: 1px solid var(--rule);
+    border-radius: 9px;
+    background: var(--paper-2);
+  }
+  .viewmode button {
+    height: 28px;
+    padding: 0 10px;
+    border: none;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--ink-2);
+    font-weight: 600;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .viewmode button[aria-pressed='true'] {
+    background: var(--sheet);
+    color: var(--ink);
+    box-shadow: var(--shadow);
+  }
   .top {
     grid-area: top;
     display: flex;

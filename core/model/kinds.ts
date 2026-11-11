@@ -8,8 +8,8 @@ import { simulateNka } from '../sim/nka';
 import { simulateTm } from '../sim/tm';
 import { validateDea, validateMealy, validateMoore, validateNea, validateNka, validateTm } from './checks';
 import type {
+  Automaton,
   Diagnostic,
-  FormalObject,
   MealyLabel,
   NkaLabel,
   ObjectKind,
@@ -60,23 +60,23 @@ export interface KindSpec {
   keywords: readonly string[];
   /** true: Übergänge in Zeilenform (`z, y, x -> z', v`), sonst Kantenform. */
   lineForm: boolean;
-  empty(name: string): FormalObject;
+  empty(name: string): Automaton;
   /** Kantenform: wandelt ein gelesenes Label (Symbole + Rohtext der Symbole) in die Kantenbeschriftung. */
   makeLabel(word: Word, raws: string[]): MakeLabelResult;
   /** Kantenform: Label als Text. */
   printLabel(label: AnyLabel): string;
   /** Baut das Objekt aus dem Parse-Ergebnis; fehlende Alphabete werden abgeleitet. */
-  finish(base: ParsedBase, extras: Extras): FormalObject;
+  finish(base: ParsedBase, extras: Extras): Automaton;
   /** Kopfzeilen nach `alphabet`, vor `states` (Ausgabe-/Keller-/Bandalphabet, keller, blank). */
-  printHead(obj: FormalObject): string[];
+  printHead(obj: Automaton): string[];
   /** Zustände, die nach `accept` in Kopfzeilen vorkommen (in Druckreihenfolge). */
-  tailRefs(obj: FormalObject): StateId[];
+  tailRefs(obj: Automaton): StateId[];
   /** Kopfzeilen nach `accept` (reject, out). */
-  printTail(obj: FormalObject, nm: (id: StateId) => string): string[];
-  validate(obj: FormalObject): Diagnostic[];
+  printTail(obj: Automaton, nm: (id: StateId) => string): string[];
+  validate(obj: Automaton): Diagnostic[];
   /** Prüft die typspezifischen JSON-Felder (Labels, Zusatzfelder); liefert den Grund oder null. */
   checkJson(obj: Record<string, unknown>, ids: ReadonlySet<string>): string | null;
-  simulate(obj: FormalObject, word: Word, opts: SimOptions): Trace;
+  simulate(obj: Automaton, word: Word, opts: SimOptions): Trace;
 }
 
 type Obj = Record<string, unknown>;
@@ -99,7 +99,7 @@ function jsonLabels(obj: Obj, ok: (l: unknown) => boolean, what: string): string
   return null;
 }
 
-function inferAlphabet<O extends FormalObject>(obj: O, base: ParsedBase): O {
+function inferAlphabet<O extends Automaton>(obj: O, base: ParsedBase): O {
   // Alphabete aus den Übergängen ableiten; explizit gesetzte werden danach wieder eingesetzt.
   const inferred = withLabelSymbols(obj, base.transitions.map((t) => t.label));
   return base.alphabet === null ? inferred : { ...inferred, alphabet: base.alphabet };
@@ -128,7 +128,7 @@ const deaSpec: KindSpec = {
       ? { ok: true, label: word[0] as Sym }
       : { ok: false, code: 'dea.labelLength', params: { label: word } },
   printLabel: (label) => (typeof label === 'string' ? printSymbol(label) : printWord(label as Word)),
-  finish: (base) => inferAlphabet(baseOf('dea', base) as unknown as FormalObject, base),
+  finish: (base) => inferAlphabet(baseOf('dea', base) as unknown as Automaton, base),
   printHead: noHead,
   tailRefs: noRefs,
   printTail: noHead,
@@ -151,7 +151,7 @@ const neaSpec: KindSpec = {
   empty: (name) => ({ kind: 'nea', name, alphabet: [], states: [], start: null, accept: [], transitions: [] }),
   makeLabel: (word) => ({ ok: true, label: word }),
   printLabel: (label) => printWord(typeof label === 'string' ? [label] : (label as Word)),
-  finish: (base) => inferAlphabet(baseOf('nea', base) as unknown as FormalObject, base),
+  finish: (base) => inferAlphabet(baseOf('nea', base) as unknown as Automaton, base),
   printHead: noHead,
   tailRefs: noRefs,
   printTail: noHead,
@@ -195,8 +195,8 @@ const mealySpec: KindSpec = {
     return `${mealySym(l.in)}/${mealySym(l.out)}`;
   },
   finish(base, extras) {
-    const o = { ...baseOf('mealy', base), outputAlphabet: [] as Sym[] } as unknown as FormalObject;
-    const r = inferAlphabet(o, base) as FormalObject & { outputAlphabet: Sym[] };
+    const o = { ...baseOf('mealy', base), outputAlphabet: [] as Sym[] } as unknown as Automaton;
+    const r = inferAlphabet(o, base) as Automaton & { outputAlphabet: Sym[] };
     return extras.outputAlphabet === null ? r : { ...r, outputAlphabet: extras.outputAlphabet };
   },
   printHead(obj) {
@@ -242,7 +242,7 @@ const mooreSpec: KindSpec = {
       return out === undefined ? s : { ...s, out };
     });
     const o = { ...baseOf('moore', { ...base, states }), outputAlphabet: [] as Sym[] };
-    const r = inferAlphabet(o as unknown as FormalObject, base) as FormalObject & { outputAlphabet: Sym[] };
+    const r = inferAlphabet(o as unknown as Automaton, base) as Automaton & { outputAlphabet: Sym[] };
     const outs: Sym[] = [];
     for (const s of states) {
       const out = (s as { out?: Sym }).out;
@@ -305,8 +305,8 @@ const nkaSpec: KindSpec = {
   printLabel: () => '',
   finish(base, extras) {
     const y0 = extras.y0 ?? DEFAULT_Y0;
-    const o = { ...baseOf('nka', base), stackAlphabet: [y0], y0 } as unknown as FormalObject;
-    const r = inferAlphabet(o, base) as FormalObject & { stackAlphabet: Sym[] };
+    const o = { ...baseOf('nka', base), stackAlphabet: [y0], y0 } as unknown as Automaton;
+    const r = inferAlphabet(o, base) as Automaton & { stackAlphabet: Sym[] };
     return extras.stackAlphabet === null ? r : { ...r, stackAlphabet: extras.stackAlphabet };
   },
   printHead(obj) {
@@ -383,7 +383,7 @@ const tmSpec: KindSpec = {
   printLabel: () => '',
   finish(base, extras) {
     const blank = extras.blank ?? DEFAULT_BLANK;
-    const o = { ...baseOf('tm', base), tapeAlphabet: [] as Sym[], blank, reject: extras.reject } as unknown as FormalObject & {
+    const o = { ...baseOf('tm', base), tapeAlphabet: [] as Sym[], blank, reject: extras.reject } as unknown as Automaton & {
       tapeAlphabet: Sym[];
     };
     const symbols: Sym[] = [];
@@ -393,7 +393,7 @@ const tmSpec: KindSpec = {
     }
     const input = base.alphabet ?? symbols.filter((s) => s !== blank);
     const tape = extras.tapeAlphabet ?? [...new Set([...input, blank, ...symbols])];
-    return { ...o, alphabet: input, tapeAlphabet: tape } as FormalObject;
+    return { ...o, alphabet: input, tapeAlphabet: tape } as Automaton;
   },
   printHead(obj) {
     if (obj.kind !== 'tm') return mismatch();
