@@ -175,6 +175,8 @@ export function enumerate(o: FormalObject, maxLen: number, maxCount?: number): W
       }
       return finish(out, alpha);
     }
+    case 'menge':
+      return finish(o.words.filter((w) => w.length <= maxLen), o.alphabet);
     case 'grammatik':
       return finish(grammarLang(o, maxLen), o.terminals);
     case 'dea':

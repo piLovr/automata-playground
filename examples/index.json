@@ -1,0 +1,212 @@
+[
+  {
+    "id": "b1-4",
+    "file": "b1-4.txt",
+    "chapter": 1,
+    "ref": "1.4",
+    "title": "Wörter: Konkatenation und Potenz"
+  },
+  {
+    "id": "b1-7",
+    "file": "b1-7.txt",
+    "chapter": 1,
+    "ref": "1.7",
+    "title": "Sprachen: Operanden für Produkt und Potenz",
+    "note": "Enthält nur die Operanden L1, L2, L3 aus 1.7 (drei Objekte in einer Datei); die Ergebnisse stehen nicht in der Datei."
+  },
+  {
+    "id": "b2-1",
+    "file": "b2-1.txt",
+    "chapter": 2,
+    "ref": "2.1",
+    "title": "Parkplatz-Zähler (Mealy-Automat)",
+    "word": "EEAAA",
+    "note": "UNKLAR: Typ nur über Kantenbeschriftung x/y erkennbar (Skript nennt Mealy nicht ausdrücklich). Ausgabe '?!' als einzelnes Symbol <warnung>, da Mealy-Labels genau ein Symbol je Seite haben."
+  },
+  {
+    "id": "b2-3",
+    "file": "b2-3.txt",
+    "chapter": 2,
+    "ref": "2.3",
+    "title": "Dualzahlen mit Vorzeichen"
+  },
+  {
+    "id": "b2-10",
+    "file": "b2-10.txt",
+    "chapter": 2,
+    "ref": "2.10",
+    "title": "Moore-Automat: Ausgabe 1 bei Dualzahl",
+    "word": "-101"
+  },
+  {
+    "id": "b2-14",
+    "file": "b2-14.txt",
+    "chapter": 2,
+    "ref": "2.14",
+    "title": "DEA mit drei Zuständen"
+  },
+  {
+    "id": "b2-15",
+    "file": "b2-15.txt",
+    "chapter": 2,
+    "ref": "2.15",
+    "title": "DEA mit Fangzustand"
+  },
+  {
+    "id": "b2-24",
+    "file": "b2-24.txt",
+    "chapter": 2,
+    "ref": "2.24",
+    "title": "Ausdruck (0*1*)*",
+    "word": "0110"
+  },
+  {
+    "id": "b2-36",
+    "file": "b2-36.txt",
+    "chapter": 2,
+    "ref": "2.36",
+    "title": "Grammatik X -> 01 | 0X1",
+    "word": "0011"
+  },
+  {
+    "id": "b2-37",
+    "file": "b2-37.txt",
+    "chapter": 2,
+    "ref": "2.37",
+    "title": "Grammatik für a^(k²)"
+  },
+  {
+    "id": "b2-38",
+    "file": "b2-38.txt",
+    "chapter": 2,
+    "ref": "2.38",
+    "title": "Grammatik für Gleitkommazahlen (mit Namen)",
+    "word": "-101"
+  },
+  {
+    "id": "b2-44",
+    "file": "b2-44.txt",
+    "chapter": 2,
+    "ref": "2.44",
+    "title": "Typ-3-Grammatik für Gleitkommazahlen",
+    "word": "-10.1E-1",
+    "note": "UNKLAR: Startsymbol im Skript S = X_n (n nicht in N); hier X0 gesetzt."
+  },
+  {
+    "id": "b2-61",
+    "file": "b2-61.txt",
+    "chapter": 2,
+    "ref": "2.61",
+    "title": "NEA ohne Fangzustand"
+  },
+  {
+    "id": "b2-66",
+    "file": "b2-66.txt",
+    "chapter": 2,
+    "ref": "2.66",
+    "title": "NEA mit Wort- und ε-Übergängen"
+  },
+  {
+    "id": "b2-66-ra",
+    "file": "b2-66-ra.txt",
+    "chapter": 2,
+    "ref": "2.66",
+    "title": "Ausdruck (01)*|(001)*",
+    "word": "0101"
+  },
+  {
+    "id": "b2-71",
+    "file": "b2-71.txt",
+    "chapter": 2,
+    "ref": "2.71",
+    "title": "NEA aus 2.66, Schritt 1 (Übergänge kürzen)",
+    "note": "UNKLAR: Kanten nur aus dem Bild abgelesen (keine Tabelle). Lesart stimmt mit 2.66 überein, daher übernommen."
+  },
+  {
+    "id": "b2-73",
+    "file": "b2-73.txt",
+    "chapter": 2,
+    "ref": "2.73",
+    "title": "NEA aus 2.66 ohne ε-Übergänge",
+    "note": "UNKLAR: Kanten nur aus dem Bild abgelesen. Zwischenstand 2.72 (zwei Varianten, gemischte Kanten) nicht übernommen."
+  },
+  {
+    "id": "b2-78",
+    "file": "b2-78.txt",
+    "chapter": 2,
+    "ref": "2.78",
+    "title": "DEA mit unerreichbaren Zuständen"
+  },
+  {
+    "id": "b2-92",
+    "file": "b2-92.txt",
+    "chapter": 2,
+    "ref": "2.92",
+    "title": "DEA zum Minimieren",
+    "word": "ab"
+  },
+  {
+    "id": "mealy-paritaet",
+    "file": "mealy-paritaet.txt",
+    "chapter": 2,
+    "ref": "",
+    "title": "Mealy-Automat: laufende Parität (nicht im Skript)",
+    "word": "1101"
+  },
+  {
+    "id": "ra-endet01",
+    "file": "ra-endet01.txt",
+    "chapter": 2,
+    "ref": "",
+    "title": "Ausdruck: endet auf 01 (Abnahme M2)",
+    "word": "1101"
+  },
+  {
+    "id": "b3-23",
+    "file": "b3-23.txt",
+    "chapter": 3,
+    "ref": "3.23",
+    "title": "Regex mit zwei Gruppen",
+    "testText": "zzbbcbbz\nzzbbcbbzzzbbcccbb\nzzbbz"
+  },
+  {
+    "id": "b3-24",
+    "file": "b3-24.txt",
+    "chapter": 3,
+    "ref": "3.24",
+    "title": "Regex (.*)(.*): erste Gruppe ist gefräßig",
+    "testText": "abcdefg"
+  },
+  {
+    "id": "b4-6",
+    "file": "b4-6.txt",
+    "chapter": 4,
+    "ref": "4.6",
+    "title": "Kellerautomat für 0ᵏ1ᵏ",
+    "word": "00001111"
+  },
+  {
+    "id": "b4-9",
+    "file": "b4-9.txt",
+    "chapter": 4,
+    "ref": "4.9",
+    "title": "Kellerautomat für Palindrome gerader Länge",
+    "word": "abaaaaba"
+  },
+  {
+    "id": "b5-9",
+    "file": "b5-9.txt",
+    "chapter": 5,
+    "ref": "5.9",
+    "title": "Turingmaschine für Palindrome",
+    "word": "abbba"
+  },
+  {
+    "id": "tm-inc",
+    "file": "tm-inc.txt",
+    "chapter": 5,
+    "ref": "",
+    "title": "Turingmaschine: Binärzahl + 1 (nicht im Skript)",
+    "word": "1011"
+  }
+]

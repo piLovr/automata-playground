@@ -33,3 +33,9 @@ export { epsilonClosure } from './sim/nea';
 
 export * from './algo/index';
 export { METHOD_IDS } from './model/methods';
+export * from './export/index';
+
+// Sprachrechner und Explorer (M3)
+export { evalLang } from './lang/index';
+export { countByLength, wordsPage, outputsTable } from './explore/index';
+export { makeMenge } from './model/menge';

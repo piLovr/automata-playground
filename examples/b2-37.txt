@@ -1,0 +1,15 @@
+# Skript 2.37: Grammatik für a^(k²)
+grammatik B2_37 {
+  nichtterminale B Q S X Y Z
+  terminale a
+  start S
+  S -> aXBZ
+  XB -> Q
+  QB -> Q
+  QZ -> ε
+  XB -> aXYB
+  YB -> aaBY
+  YZ -> BZ
+  Xa -> aX
+  Ba -> aB
+}

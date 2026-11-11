@@ -69,6 +69,8 @@ export function runMethod(method: MethodId, sources: FormalObject[], opts: ProcO
       if (a.kind !== 'dea') return wrong(a.kind);
       if (b === undefined || b.kind !== 'dea') return wrong(b === undefined ? 'none' : b.kind);
       return product(a, b, method, opts);
+    case 'sprachop':
+      return wrong(a.kind); // nur über evalLang
     case 'egrep2regex':
       return a.kind === 'egrep' ? egrepToRegex(a, opts) : wrong(a.kind);
     case 'mealy2moore':

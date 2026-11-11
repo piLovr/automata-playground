@@ -85,3 +85,5 @@ class Runner {
 }
 
 export const runner = new Runner();
+/** Eigener Worker für den Sprach-Explorer, damit er laufende Verfahren nicht abbricht. */
+export const explorer = new Runner();

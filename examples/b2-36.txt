@@ -1,0 +1,7 @@
+# Skript 2.36: Grammatik X -> 01 | 0X1
+grammatik B2_36 {
+  nichtterminale X
+  terminale 0 1
+  start X
+  X -> 01 | 0X1
+}

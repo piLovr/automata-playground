@@ -1,6 +1,6 @@
 # Automaten-Playground
 
-Browser-Tool für formale Sprachen und Automaten. Stand: Meilenstein M2 (reguläre Ausdrücke, Typ-3-Grammatiken, Verfahren aus 7.1, Arbeitsfläche) und egrep-Regex.
+Browser-Tool für formale Sprachen und Automaten. Stand: Meilenstein M3 (Sprach-Explorer, endliche Sprachen und Sprachrechner, Beispielbibliothek Kap. 1–2, Export SVG/PNG/TikZ/LaTeX); dazu egrep-Regex.
 
 ## Befehle
 

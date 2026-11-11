@@ -3,7 +3,7 @@ import { findKindByKeyword, parseMove } from '../model/kinds';
 import type { AnyLabel, Extras, KindSpec } from '../model/kinds';
 import type { Automaton, Diagnostic, Document, FormalObject, NkaLabel, Point, State, Sym, TmLabel, Transition, Word } from '../model/types';
 import { COMMON_KEYWORDS, Scanner, isStateStart } from './lexer';
-import { parseEgrepBlock, parseEgrepShort, parseGrammarBlock, parseRegexBlock, parseRegexShort } from './objects';
+import { parseEgrepBlock, parseEgrepShort, parseGrammarBlock, parseMengeBlock, parseMengeShort, parseRegexBlock, parseRegexShort } from './objects';
 import { mapStates, newOriginAcc, parseEntspricht, parseHerkunft, resolveSourceStates } from './origin';
 import { readSymbol } from './word';
 
@@ -512,7 +512,7 @@ export function parseDocument(text: string): { doc: Document; diagnostics: Diagn
       sc.skipToLineEnd(false);
       continue;
     }
-    if (kw === 'regex' || kw === 'grammatik' || kw === 'egrep') {
+    if (kw === 'regex' || kw === 'grammatik' || kw === 'egrep' || kw === 'menge') {
       sc.skipWsAndComments();
       const nameStart = sc.i;
       const name = sc.readStateName();
@@ -520,9 +520,14 @@ export function parseDocument(text: string): { doc: Document; diagnostics: Diagn
       sc.skipInline();
       sc.objectName = name;
       let obj: FormalObject | null = null;
-      if ((kw === 'regex' || kw === 'egrep') && sc.peek() === '=') {
+      if ((kw === 'regex' || kw === 'egrep' || kw === 'menge') && sc.peek() === '=') {
         sc.advance();
-        obj = kw === 'regex' ? parseRegexShort(sc, name) : parseEgrepShort(sc, name);
+        obj =
+          kw === 'regex'
+            ? parseRegexShort(sc, name)
+            : kw === 'menge'
+              ? parseMengeShort(sc, name)
+              : parseEgrepShort(sc, name);
       } else {
         sc.skipWsAndComments();
         if (sc.peek() !== '{') {
@@ -536,7 +541,9 @@ export function parseDocument(text: string): { doc: Document; diagnostics: Diagn
               ? parseRegexBlock(sc, name, braceAt)
               : kw === 'egrep'
                 ? parseEgrepBlock(sc, name, braceAt)
-                : parseGrammarBlock(sc, name, braceAt);
+                : kw === 'menge'
+                  ? parseMengeBlock(sc, name, braceAt)
+                  : parseGrammarBlock(sc, name, braceAt);
         }
       }
       sc.objectName = undefined;

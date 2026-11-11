@@ -14,7 +14,7 @@
 
   /** Typ-3-Objekte (für Äquivalenztest und Produkt). */
   function isType3(o: FormalObject): boolean {
-    if (o.kind === 'dea' || o.kind === 'nea' || o.kind === 'regex') return true;
+    if (o.kind === 'dea' || o.kind === 'nea' || o.kind === 'regex' || o.kind === 'menge' || o.kind === 'egrep') return true;
     return o.kind === 'grammatik' && grammarType(o).type === 3;
   }
   const others = $derived(store.doc.objects.filter((o) => o !== obj && isType3(o)));

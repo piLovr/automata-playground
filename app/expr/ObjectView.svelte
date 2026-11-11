@@ -36,6 +36,8 @@
   <div class="pad">
     <RegexText expr={obj.expr} highlight={paths} size={compact ? 'md' : 'lg'} onhover={(p) => onhover?.(p ? { subexpr: p } : null)} />
   </div>
+{:else if obj.kind === 'menge'}
+  <div class="pad mono egrep">{obj.words.length === 0 ? '∅' : `{${obj.words.map((w) => (w.length ? w.join('') : 'ε')).join(', ')}}`}</div>
 {:else if obj.kind === 'egrep'}
   <div class="pad mono egrep">{obj.pattern}</div>
 {:else}

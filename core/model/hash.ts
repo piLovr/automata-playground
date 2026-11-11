@@ -30,7 +30,9 @@ export function objectHash(o: FormalObject): string {
   const body =
     o.kind === 'regex' && text.startsWith(`regex ${o.name} = `)
       ? text.slice(`regex ${o.name} = `.length)
-      : text.slice(text.indexOf('\n') + 1);
+      : o.kind === 'menge' && text.startsWith(`menge ${o.name} = `)
+        ? text.slice(`menge ${o.name} = `.length)
+        : text.slice(text.indexOf('\n') + 1);
   return fnv1a(body);
 }
 

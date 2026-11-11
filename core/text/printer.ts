@@ -2,7 +2,7 @@
 import { getKind, moveLetter } from '../model/kinds';
 import type { Automaton, Document, FormalObject, NkaLabel, TmLabel } from '../model/types';
 import { transitionsOf } from '../model/util';
-import { printEgrepObject, printGrammarObject, printRegexObject } from './objects';
+import { printEgrepObject, printMengeObject, printGrammarObject, printRegexObject } from './objects';
 import { printOrigin } from './origin';
 import { printSymbol, printWord } from './word';
 
@@ -23,6 +23,7 @@ export function formatNumber(n: number): string {
 export function printObject(obj: FormalObject, opts: PrintOptions = {}, doc?: Document): string {
   if (obj.kind === 'regex') return printRegexObject(obj, { origin: opts.origin !== false }, doc);
   if (obj.kind === 'egrep') return printEgrepObject(obj, { origin: opts.origin !== false }, doc);
+  if (obj.kind === 'menge') return printMengeObject(obj, { origin: opts.origin !== false }, doc);
   if (obj.kind === 'grammatik') return printGrammarObject(obj, { origin: opts.origin !== false }, doc);
   return printAutomaton(obj, opts, doc);
 }

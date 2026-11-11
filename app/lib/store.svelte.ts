@@ -23,10 +23,12 @@ const HISTORY_MAX = 200;
 export interface BatchRow {
   input: string;
   expected: boolean | null;
+  /** Mealy/Moore: erwartetes Ausgabewort (Rohtext); leer = keine Erwartung. */
+  output?: string;
 }
 
 export type Tool = 'select' | 'state' | 'edge';
-export type PanelTab = 'table' | 'text' | 'batch' | 'procs';
+export type PanelTab = 'table' | 'text' | 'batch' | 'procs' | 'lang';
 export type ViewMode = 'single' | 'workspace';
 export type Theme = 'auto' | 'light' | 'dark';
 
@@ -204,6 +206,7 @@ class AppStore {
       regex: 'R',
       grammatik: 'G',
       egrep: 'E',
+      menge: 'L',
     };
     const name = freshName(names, prefix[kind]);
     const obj = emptyObject(kind, name);
@@ -252,19 +255,24 @@ class AppStore {
     this.updateAny((x) => ({ ...x, name }));
   }
 
-  loadExample(id: string): void {
+  /** Lädt ein Beispiel; Dateien mit mehreren Objekten (z. B. 1.7) kommen ganz. */
+  loadExample(id: string, opts: { activate?: boolean } = {}): void {
     const ex = examples.find((e) => e.id === id);
     if (!ex) return;
     const { doc } = parseDocument(ex.text);
-    const incoming = doc.objects[0];
-    if (!incoming) return;
+    if (doc.objects.length === 0) return;
     const names = this.doc.objects.map((o) => o.name);
-    const name = names.includes(incoming.name) ? freshName(names, incoming.name + '_') : incoming.name;
-    const obj = withLayout({ ...incoming, name });
-    if (ex.word !== undefined) this.words[name] = ex.word;
-    if (ex.testText !== undefined) this.texts[name] = ex.testText;
+    const added = doc.objects.map((incoming) => {
+      const name = names.includes(incoming.name) ? freshName(names, incoming.name + '_') : incoming.name;
+      names.push(name);
+      return withLayout({ ...incoming, name });
+    });
+    const first = added[0]!.name;
+    if (ex.word !== undefined) this.words[first] = ex.word;
+    if (ex.testText !== undefined) this.texts[first] = ex.testText;
     this.simStep = 0;
-    this.commit({ ...this.doc, objects: [...this.doc.objects, obj] }, { active: this.doc.objects.length });
+    const active = opts.activate === false ? this.active : this.doc.objects.length;
+    this.commit({ ...this.doc, objects: [...this.doc.objects, ...added] }, { active });
     this.select([]);
   }
 

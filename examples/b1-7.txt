@@ -1,0 +1,4 @@
+# Skript 1.7: Operanden für Produkt und Potenz von Sprachen
+menge L1 = {01, 1}
+menge L2 = {000, 01}
+menge L3 = {010, 11}

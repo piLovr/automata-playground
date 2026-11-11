@@ -7,7 +7,7 @@ import { labelKey, numericSuffix, transitionsOf, type AnyTransition } from './ut
  * und Positionen (wenn `next` keine hat). Neue Elemente bekommen IDs, die in `prev` nicht vorkommen.
  */
 export function reconcile(prev: FormalObject | undefined, next: FormalObject): FormalObject {
-  if (!prev || prev.kind === 'regex' || prev.kind === 'egrep') return next;
+  if (!prev || prev.kind === 'regex' || prev.kind === 'egrep' || prev.kind === 'menge') return next;
   if (prev.kind === 'grammatik') return next.kind === 'grammatik' ? reconcileGrammar(prev, next) : next;
   if (!isAutomaton(next)) return next;
   return reconcileAutomaton(prev, next);

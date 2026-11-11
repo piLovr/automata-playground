@@ -2,6 +2,9 @@
   import { store, type BatchRow } from '../lib/store.svelte';
   import { sim } from '../lib/sim.svelte';
   import { t } from '../i18n';
+  import { showWord } from '../lib/format';
+
+  const transducer = $derived(store.aut?.kind === 'mealy' || store.aut?.kind === 'moore');
 
   const PASTE_EXAMPLE = '01 +\n0011 -\nε +';
   let pasting = $state(false);
@@ -26,6 +29,11 @@
     for (const line of pasteText.split('\n')) {
       const s = line.trim();
       if (!s) continue;
+      const io = /^(.*?)\s*\/\s*(.*)$/u.exec(s);
+      if (transducer && io) {
+        added.push({ input: io[1]!, expected: null, output: io[2]! });
+        continue;
+      }
       const m = /^(.*?)\s+([+−-]|∈|∉)$/u.exec(s);
       if (m) added.push({ input: m[1]!, expected: m[2] === '+' || m[2] === '∈' });
       else added.push({ input: s, expected: null });
@@ -55,14 +63,14 @@
     </div>
     <div class="actions">
       <button class="btn" onclick={() => (pasting = !pasting)}>{t('batch.paste')}</button>
-      <button class="btn primary" onclick={() => setRows([...store.batch, { input: '', expected: true }])}>+ {t('batch.add')}</button>
+      <button class="btn primary" onclick={() => setRows([...store.batch, transducer ? { input: '', expected: null, output: '' } : { input: '', expected: true }])}>+ {t('batch.add')}</button>
     </div>
   </div>
 
   {#if pasting}
     <div class="paste">
-      <p class="hint">{t('batch.pasteHint')}</p>
-      <textarea class="mono" rows="5" bind:value={pasteText} placeholder={PASTE_EXAMPLE}></textarea>
+      <p class="hint">{t(transducer ? 'batch.pasteHintOut' : 'batch.pasteHint')}</p>
+      <textarea class="mono" rows="5" bind:value={pasteText} placeholder={transducer ? '-101 / 00111\n10 / 011' : PASTE_EXAMPLE}></textarea>
       <div class="actions">
         <button class="btn ghost" onclick={() => (pasting = false)}>{t('batch.cancel')}</button>
         <button class="btn primary" onclick={applyPaste}>{t('batch.apply')}</button>
@@ -85,12 +93,25 @@
             aria-label={t('sim.word')}
             oninput={(e) => patch(i, { input: e.currentTarget.value })}
           />
-          <button class="expect" onclick={() => patch(i, { expected: cycle(row.expected) })} title={t('batch.expect')}>
-            {row.expected === true ? t('batch.in') : row.expected === false ? t('batch.notIn') : t('batch.any')}
-          </button>
-          <button class="res" onclick={() => useWord(row.input)} title="In der Simulation öffnen">
-            {#if res}{GLYPH[res.result]} {t(`result.${res.result}`)}{:else}{t('sim.wordError')}{/if}
-          </button>
+          {#if transducer}
+            <input
+              class="mono word out-want"
+              value={row.output ?? ''}
+              placeholder={t('batch.outWant')}
+              aria-label={t('batch.outWant')}
+              oninput={(e) => patch(i, { output: e.currentTarget.value })}
+            />
+            <button class="res mono" onclick={() => useWord(row.input)} title={t('batch.outGot')}>
+              {#if rows[i]?.out}→ {showWord(rows[i].out)}{:else}{t('sim.wordError')}{/if}
+            </button>
+          {:else}
+            <button class="expect" onclick={() => patch(i, { expected: cycle(row.expected) })} title={t('batch.expect')}>
+              {row.expected === true ? t('batch.in') : row.expected === false ? t('batch.notIn') : t('batch.any')}
+            </button>
+            <button class="res" onclick={() => useWord(row.input)} title="In der Simulation öffnen">
+              {#if res}{GLYPH[res.result]} {t(`result.${res.result}`)}{:else}{t('sim.wordError')}{/if}
+            </button>
+          {/if}
           <button class="rm" aria-label={t('batch.remove')} title={t('batch.remove')} onclick={() => setRows(store.batch.filter((_, k) => k !== i))}>×</button>
         </li>
       {/each}

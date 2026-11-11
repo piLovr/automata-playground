@@ -186,8 +186,24 @@ export interface EgrepMatch {
   groups: ({ from: number; to: number } | null)[];
 }
 
+/** Endliche Sprache (Kapitel 1), z. B. {01, 1}. */
+export interface MengeObj {
+  kind: 'menge';
+  name: string;
+  /** Alphabet; ohne Angabe die Symbole der Wörter in Reihenfolge des ersten Auftretens. */
+  alphabet: Sym[];
+  /** Wörter, ohne Doppelte, nach Länge und dann lexikographisch (Alphabetreihenfolge). */
+  words: Word[];
+  /**
+   * Gesetzt, wenn die Menge ein unendliches Ergebnis (L*, L+) bis zu dieser Länge abschneidet;
+   * die Menge ist dann nur bis Länge upTo vollständig.
+   */
+  upTo?: number;
+  origin?: Origin;
+}
+
 /** Alle Objekte eines Dokuments. */
-export type FormalObject = Automaton | RegexObj | Grammar | EgrepObj;
+export type FormalObject = Automaton | RegexObj | Grammar | EgrepObj | MengeObj;
 export type FormalKind = FormalObject['kind'];
 
 /** Verfahren, die ein neues Objekt erzeugen (Herkunft). */
@@ -209,7 +225,8 @@ export type MethodId =
   | 'minimize' // 2.90
   | 'mealy2moore' // nicht im Skript
   | 'moore2mealy' // nicht im Skript
-  | 'egrep2regex'; // 7.4: Regex (Kap. 3) → regulärer Ausdruck (Kap. 2)
+  | 'egrep2regex' // 7.4: Regex (Kap. 3) → regulärer Ausdruck (Kap. 2)
+  | 'sprachop'; // Sprachrechner (1.6–1.9): Ergebnis eines Ausdrucks über Mengen
 
 /** Verweis auf ein Element eines Objekts (Hervorhebung, Entsprechungen). */
 export type ElemRef =
@@ -294,6 +311,13 @@ export type DiagnosticCode =
   | 'egrep.backref' // Fehler bei der Umwandlung (3.25)
   | 'egrep.anchorInside' // ^ oder $ nicht am Rand einer Alternative
   | 'egrep.alphabetTooLarge' // params: { size: number }
+  // Endliche Sprachen und Sprachrechner (Kapitel 1)
+  | 'menge.duplicate' // Warnung: params: { word: Word }  Wort mehrfach angegeben
+  | 'lang.unknownName' // params: { name: string; col }
+  | 'lang.notFinite' // params: { name: string }  Objekt ist keine endliche Menge und kein Typ-3-Objekt
+  | 'lang.syntax' // params: { found: string; expected: string[]; col }
+  | 'lang.truncated' // Warnung: params: { upTo: number }  L* bzw. L+ nur bis Länge upTo
+  | 'lang.tooLarge' // params: { limit: number }  mehr Wörter als erlaubt
   // Verfahren
   | 'algo.wrongKind' // params: { method: MethodId; kind: FormalKind }
   | 'algo.incomplete' // params: { pairs: { state: StateId; symbol: Sym }[] }  DEA nicht total (2.33, 2.90)
@@ -487,4 +511,28 @@ export interface GrammarTypeInfo {
   }[];
   /** Typ 1 nur wegen der Sonderregel S → ε (S auf keiner rechten Seite), 5.1. */
   startEpsilonRule: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Sprach-Explorer und Export (M3)
+
+export interface LengthCounts {
+  /** counts[n] = Anzahl der Wörter der Länge n in der Sprache. */
+  counts: bigint[];
+  /** true: exakt gezählt; false: Stichprobe über Simulation (Kellerautomat, TM). */
+  exact: boolean;
+}
+
+export interface WordsPage {
+  words: Word[];
+  /** Keine weiteren Wörter bis maxLen. */
+  done: boolean;
+  exact: boolean;
+}
+
+export interface TikzOptions {
+  /** Vollständiges Dokument mit \documentclass{standalone} (Standard true). */
+  standalone?: boolean;
+  /** Zentimeter je 100 Pixel Layout (Standard 1.6). */
+  scale?: number;
 }

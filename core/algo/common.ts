@@ -31,7 +31,7 @@ export function clone<T>(o: T): T {
 }
 
 export function isAutomatonObj(o: FormalObject): o is Automaton {
-  return o.kind !== 'regex' && o.kind !== 'grammatik' && o.kind !== 'egrep';
+  return o.kind !== 'regex' && o.kind !== 'grammatik' && o.kind !== 'egrep' && o.kind !== 'menge';
 }
 
 // ---------------------------------------------------------------------------

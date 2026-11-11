@@ -9,11 +9,12 @@ import {
   readSide,
 } from '../model/grammar';
 import { parseRegexScanner, printRegex, regexSymbols } from '../model/regex';
-import type { Document, EgrepObj, Grammar, Production, RegexObj, Sym, Word } from '../model/types';
+import { makeMenge, printOrder } from '../model/menge';
+import type { Document, EgrepObj, Grammar, MengeObj, Production, RegexObj, Sym, Word } from '../model/types';
 import { Scanner } from './lexer';
 import { newOriginAcc, parseEntspricht, parseHerkunft, printOrigin } from './origin';
 import { readSymbol } from './word';
-import { printSymbol } from './word';
+import { printSymbol, printWord } from './word';
 
 function atListEnd(sc: Scanner): boolean {
   const c = sc.peek();
@@ -417,4 +418,208 @@ export function printEgrepObject(obj: EgrepObj, opts: { origin: boolean }, doc?:
   lines.push(obj.pattern === '' ? '  =' : '  = ' + obj.pattern);
   if (withOrigin && obj.origin) for (const l of printOrigin(obj.origin, (id) => id, doc)) lines.push('  ' + l);
   return `egrep ${obj.name} {\n${lines.map((l) => l + '\n').join('')}}\n`;
+}
+
+// ---------------------------------------------------------------------------
+// Menge (endliche Sprache): `{w1, w2, ε}`
+
+/** Liest eine Wortliste ab `{` bis `}` (Zeilenumbrüche und Kommentare erlaubt). `{` steht an sc.i. */
+export function readWordSet(sc: Scanner): Word[] | null {
+  const braceAt = sc.i;
+  sc.advance();
+  const words: Word[] = [];
+  const seen = new Set<string>();
+  let expectSep = false;
+  let afterComma = false;
+  for (;;) {
+    sc.skipWsAndComments();
+    if (sc.eof()) {
+      sc.report('syntax.unterminated', { what: 'object' }, braceAt, 1);
+      return words;
+    }
+    const c = sc.peek();
+    if (c === '}') {
+      if (afterComma) sc.unexpected(['Wort']);
+      sc.advance();
+      return words;
+    }
+    afterComma = false;
+    if (expectSep) {
+      if (c === ',') {
+        sc.advance();
+        expectSep = false;
+        afterComma = true;
+        continue;
+      }
+      sc.unexpected(['","', '"}"']);
+      sc.advance();
+      continue;
+    }
+    if (c === ',') {
+      // leeres Element
+      sc.unexpected(['Wort']);
+      sc.advance();
+      continue;
+    }
+    const start = sc.i;
+    const syms: Sym[] = [];
+    const raws: string[] = [];
+    let eps = false;
+    let bad = false;
+    while (!sc.eof()) {
+      const d = sc.peek();
+      if (d === ',' || d === '}' || /\s/u.test(d)) break;
+      if (d === 'ε') {
+        eps = true;
+        raws.push('ε');
+        sc.advance();
+        continue;
+      }
+      const r = readSymbol(sc);
+      if (!r) {
+        bad = true;
+        if (!sc.eof() && sc.i === start) sc.advance();
+        break;
+      }
+      syms.push(r.sym);
+      raws.push(r.raw);
+    }
+    expectSep = true;
+    if (bad) continue;
+    const text = raws.join('');
+    if (eps && syms.length > 0) {
+      sc.report('syntax.unexpected', { found: text, expected: ['ε', 'Wort'] }, start, Math.max(1, sc.i - start));
+      continue;
+    }
+    if (text === '∅' && words.length === 0) continue;
+    const word = text === 'eps' ? [] : eps ? [] : syms;
+    const k = JSON.stringify(word);
+    if (seen.has(k)) sc.report('menge.duplicate', { word }, start, Math.max(1, sc.i - start), 'warning');
+    else {
+      seen.add(k);
+      words.push(word);
+    }
+  }
+}
+
+/** Kurzform: sc.i steht hinter dem Namen und `=`. */
+export function parseMengeShort(sc: Scanner, name: string): MengeObj | null {
+  sc.skipInline();
+  if (sc.peek() === '∅') {
+    sc.advance();
+    sc.skipToLineEnd(false);
+    return makeMenge(name, [], null);
+  }
+  if (sc.peek() !== '{') {
+    sc.unexpected(['"{"']);
+    sc.skipToLineEnd(false);
+    return null;
+  }
+  const words = readWordSet(sc) ?? [];
+  sc.skipToLineEnd(false);
+  return makeMenge(name, words, null);
+}
+
+/** Blockform: `{` ist gelesen. */
+export function parseMengeBlock(sc: Scanner, name: string, braceAt: number): MengeObj {
+  let alphabet: Sym[] | null = null;
+  let words: Word[] = [];
+  let setSeen = false;
+  let upTo: number | undefined;
+  const acc = newOriginAcc();
+  for (;;) {
+    sc.skipWsAndComments();
+    if (sc.eof()) {
+      sc.report('syntax.unterminated', { what: 'object' }, braceAt, 1);
+      break;
+    }
+    if (sc.peek() === '}') {
+      sc.advance();
+      break;
+    }
+    const stmtStart = sc.i;
+    if (sc.peek() === '=') {
+      sc.advance();
+      sc.skipInline();
+      if (sc.peek() !== '{' && sc.peek() !== '∅') {
+        sc.unexpected(['"{"']);
+        sc.skipToLineEnd(true);
+        continue;
+      }
+      let ws: Word[] = [];
+      if (sc.peek() === '∅') sc.advance();
+      else ws = readWordSet(sc) ?? [];
+      if (setSeen) sc.report('syntax.duplicateStatement', { statement: '=' }, stmtStart, 1);
+      else {
+        setSeen = true;
+        words = ws;
+      }
+      sc.skipToLineEnd(true);
+      continue;
+    }
+    const word = sc.readStateName();
+    switch (word) {
+      case 'alphabet': {
+        alphabet ??= [];
+        for (;;) {
+          sc.skipInline();
+          if (atListEnd(sc)) break;
+          const r = readSymbol(sc);
+          if (!r) {
+            sc.skipToLineEnd(true);
+            break;
+          }
+          if (!alphabet.includes(r.sym)) alphabet.push(r.sym);
+        }
+        break;
+      }
+      case 'bis': {
+        sc.skipInline();
+        const at = sc.i;
+        let t = '';
+        while (/^[0-9]$/.test(sc.peek())) {
+          t += sc.peek();
+          sc.advance();
+        }
+        if (t === '') {
+          sc.report('syntax.badNumber', { text: sc.text.slice(at, at + 1) }, at, 1);
+          sc.skipToLineEnd(true);
+        } else if (upTo !== undefined) sc.report('syntax.duplicateStatement', { statement: 'bis' }, stmtStart, 3);
+        else upTo = Number(t);
+        break;
+      }
+      case 'herkunft':
+        parseHerkunft(sc, acc, stmtStart);
+        break;
+      case 'entspricht':
+        parseEntspricht(sc, acc, stmtStart);
+        break;
+      default:
+        sc.unexpected(['Anweisung']);
+        sc.skipToLineEnd(true);
+    }
+  }
+  const extra: { upTo?: number; origin?: MengeObj['origin'] } = {};
+  if (upTo !== undefined) extra.upTo = upTo;
+  if (acc.origin) extra.origin = acc.origin;
+  return makeMenge(name, words, alphabet, extra);
+}
+
+function printMengeWord(w: Word): string {
+  const t = printWord(w);
+  return t === '∅' ? '\\∅' : t;
+}
+
+export function printMengeObject(obj: MengeObj, opts: { origin: boolean }, doc?: Document): string {
+  const withOrigin = opts.origin && obj.origin !== undefined;
+  const order = printOrder(obj);
+  const shown = order ?? obj.words;
+  const set = shown.length === 0 ? '{}' : `{${shown.map(printMengeWord).join(', ')}}`;
+  if (order !== null && obj.upTo === undefined && !withOrigin) return `menge ${obj.name} = ${set}\n`;
+  const lines: string[] = [];
+  if (obj.alphabet.length > 0) lines.push('  alphabet ' + obj.alphabet.map(printSymbol).join(' '));
+  lines.push(`  = ${set}`);
+  if (obj.upTo !== undefined) lines.push(`  bis ${obj.upTo}`);
+  if (withOrigin && obj.origin) for (const l of printOrigin(obj.origin, (id) => id, doc)) lines.push('  ' + l);
+  return `menge ${obj.name} {\n${lines.map((l) => l + '\n').join('')}}\n`;
 }

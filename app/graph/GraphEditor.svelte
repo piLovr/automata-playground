@@ -23,6 +23,12 @@
 
   let host: HTMLDivElement | undefined = $state();
   let svg: SVGSVGElement | undefined = $state();
+  let content: SVGGElement | undefined = $state();
+
+  /** Diagrammgruppe für den Export (SVG/PNG). */
+  export function exportContent(): SVGGElement | undefined {
+    return content;
+  }
   let width = $state(800);
   let height = $state(600);
   let view = $state({ x: 0, y: 0, k: 1 });
@@ -602,7 +608,7 @@
     </defs>
     <rect {width} {height} fill="url(#dots)" />
 
-    <g transform="translate({view.x} {view.y}) scale({view.k})">
+    <g bind:this={content} transform="translate({view.x} {view.y}) scale({view.k})">
       <!-- Kanten -->
       {#each geometry as { g, geo } (g.key)}
         {@const selected = selEdges.has(g.key)}
@@ -637,7 +643,7 @@
       {/each}
 
       {#if ghost}
-        <g class="edge ghost">
+        <g class="edge ghost" data-noexport>
           <path class="line" d={ghost.path} />
           <path class="head" d={arrowHead(ghost.tip, ghost.dir)} />
         </g>
@@ -667,7 +673,7 @@
           onpointerdown={(e) => onStateDown(e, s.id)}
           role="presentation"
         >
-          {#if selStates.has(s.id)}<circle class="sel-ring" r={STATE_R + 7} />{/if}
+          {#if selStates.has(s.id)}<circle class="sel-ring" r={STATE_R + 7} data-noexport />{/if}
           {#if active}<circle class="halo" r={STATE_R + 9} />{/if}
           <circle class="body" r={STATE_R} />
           {#if hasAccept && acceptSet.has(s.id)}<circle class="inner" r={STATE_R - ACCEPT_GAP} />{/if}
@@ -689,7 +695,7 @@
             >
           {/if}
           {#if sim.incomplete.has(s.id)}
-            <g class="warn" transform="translate({STATE_R * 0.72} {-STATE_R * 0.72})">
+            <g class="warn" data-noexport transform="translate({STATE_R * 0.72} {-STATE_R * 0.72})">
               <title>Übergänge fehlen</title>
               <circle r="7.5" />
               <text text-anchor="middle" dominant-baseline="central">!</text>
@@ -700,6 +706,7 @@
 
       {#if drag?.type === 'marquee'}
         <rect
+          data-noexport
           class="marquee"
           x={Math.min(drag.start.x, drag.cur.x)}
           y={Math.min(drag.start.y, drag.cur.y)}

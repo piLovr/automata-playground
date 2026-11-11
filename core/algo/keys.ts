@@ -47,6 +47,11 @@ export const EXPLANATION_KEYS = [
   'proc.egrep.repeat',
   'proc.egrep.anchor',
   'proc.egrep.result',
+  'proc.lang.concat',
+  'proc.lang.union',
+  'proc.lang.power',
+  'proc.lang.star',
+  'proc.lang.plus',
 ] as const;
 
 export type ExplanationKey = (typeof EXPLANATION_KEYS)[number];

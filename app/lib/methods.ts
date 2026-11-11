@@ -29,6 +29,7 @@ export const METHODS: Record<MethodId, MethodInfo> = {
   mealy2moore: { ref: '' },
   moore2mealy: { ref: '' },
   egrep2regex: { ref: '3.25, 7.4' },
+  sprachop: { ref: '1.6–1.9' },
 };
 
 /** Reihenfolge im Verfahrensreiter. */

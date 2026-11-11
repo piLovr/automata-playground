@@ -95,6 +95,14 @@ function checkObject(o: unknown, path: string): void {
     checkOrigin(obj.origin, `${path}.origin`);
     return;
   }
+  if (obj.kind === 'menge') {
+    check(isStr(obj.name), `${path}.name: string expected`);
+    check(isStrArr(obj.alphabet), `${path}.alphabet: string[] expected`);
+    check(Array.isArray(obj.words) && obj.words.every(isStrArr), `${path}.words: string[][] expected`);
+    check(obj.upTo === undefined || (typeof obj.upTo === 'number' && Number.isInteger(obj.upTo) && obj.upTo >= 0), `${path}.upTo: integer expected`);
+    checkOrigin(obj.origin, `${path}.origin`);
+    return;
+  }
   if (obj.kind === 'grammatik') {
     check(isStr(obj.name), `${path}.name: string expected`);
     check(isStrArr(obj.nonterminals), `${path}.nonterminals: string[] expected`);

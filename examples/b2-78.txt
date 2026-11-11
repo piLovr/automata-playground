@@ -1,0 +1,12 @@
+# Skript 2.78: DEA mit unerreichbaren Zuständen B, C, D
+dea B2_78 {
+  alphabet 0 1
+  states A B C D
+  start A
+  accept A
+  A -0,1-> A
+  B -0,1-> B
+  C -0,1-> C
+  D -0,1-> D
+  layout A@0,0 B@200,0 C@400,0 D@600,0
+}

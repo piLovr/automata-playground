@@ -1,0 +1,2 @@
+# Skript 1.4: Wörter, Konkatenation und Potenz
+menge B1_4 = {0010, 1000, 00000, 000111, 0111, 010101}

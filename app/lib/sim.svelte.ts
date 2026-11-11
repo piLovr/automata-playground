@@ -68,6 +68,18 @@ class SimView {
     const parsed = rows.map((r) => parseInputWord(r.input));
     const valid = parsed.flatMap((w, i) => (w ? [{ word: w, expected: rows[i]!.expected }] : []));
     const aut = store.aut;
+    // Mealy/Moore: Ausgabewort mit der Erwartung vergleichen.
+    if (aut && (aut.kind === 'mealy' || aut.kind === 'moore')) {
+      return rows.map((r, i) => {
+        const w = parsed[i];
+        if (!w) return { row: r, res: null, out: null };
+        const tr = simulate(aut, w, { stepLimit: store.simLimit });
+        const out = tr.output ?? [];
+        const want = r.output && r.output.trim() !== '' ? parseInputWord(r.output) : null;
+        const ok = want === null ? null : tr.result === 'done' && want.length === out.length && want.every((x, k) => x === out[k]);
+        return { row: r, res: { word: w, expected: null, result: tr.result, ok } as BatchResult, out };
+      });
+    }
     // Ausdruck und Grammatik: Zugehörigkeit über den Kern (intern als DEA).
     const results: BatchResult[] = aut
       ? runBatch(aut, valid, { stepLimit: store.simLimit })
@@ -77,7 +89,7 @@ class SimView {
           return { word, expected, result, ok: expected === null || a === null ? null : a === expected };
         });
     let k = 0;
-    return rows.map((r, i) => (parsed[i] ? { row: r, res: results[k++]! } : { row: r, res: null }));
+    return rows.map((r, i) => (parsed[i] ? { row: r, res: results[k++]!, out: null } : { row: r, res: null, out: null }));
   });
 }
 

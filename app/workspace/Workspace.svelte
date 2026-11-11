@@ -54,7 +54,7 @@
   });
 
   function isType3(o: FormalObject): boolean {
-    if (o.kind === 'dea' || o.kind === 'nea' || o.kind === 'regex') return true;
+    if (o.kind === 'dea' || o.kind === 'nea' || o.kind === 'regex' || o.kind === 'menge' || o.kind === 'egrep') return true;
     return o.kind === 'grammatik' && grammarType(o).type === 3;
   }
   const type3 = $derived(objects.filter(isType3));

@@ -24,8 +24,8 @@ describe('Beispieldateien examples/*.txt', () => {
         expect(errors).toEqual([]);
       });
 
-      it('enthält genau ein Objekt', () => {
-        expect(parsed.doc.objects).toHaveLength(1);
+      it('enthält mindestens ein Objekt (b1-7: die drei Operanden aus 1.7)', () => {
+        expect(parsed.doc.objects.length).toBeGreaterThanOrEqual(1);
       });
 
       it('validate liefert keine Fehler', () => {

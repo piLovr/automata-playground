@@ -1,5 +1,5 @@
 // Ausführung eines Verfahrensauftrags (im Worker oder ersatzweise im Hauptthread).
-import { equivalent, runMethod, separatingWord, type DEA } from '../../core/index';
+import { countByLength, equivalent, runMethod, separatingWord, wordsPage, type DEA } from '../../core/index';
 import type { ProcCall } from './proc-protocol';
 
 export function execute(call: ProcCall, onProgress?: (done: number) => void): unknown {
@@ -11,5 +11,9 @@ export function execute(call: ProcCall, onProgress?: (done: number) => void): un
       return equivalent(call.sources[0]!, call.sources[1]!, opts);
     case 'separatingWord':
       return separatingWord(call.sources[0] as DEA, call.words[0], call.words[1], opts);
+    case 'countByLength':
+      return countByLength(call.sources[0]!, call.maxLen);
+    case 'wordsPage':
+      return wordsPage(call.sources[0]!, { maxLen: call.maxLen, offset: call.offset, limit: call.limit });
   }
 }

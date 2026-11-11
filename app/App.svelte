@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { edit, fromJSON, parseDocument, printDocument, toJSON, grammarType, type FormalKind, type StateId } from '../core/index';
+  import { edit, fromJSON, parseDocument, printDocument, toJSON, grammarType, toTikz, toLatexTable, toLatex, type FormalKind, type StateId } from '../core/index';
+  import { copyText, downloadBlob, standaloneSvg, svgToPng } from './lib/export';
   import { store } from './lib/store.svelte';
   import { sim } from './lib/sim.svelte';
-  import { examples } from './lib/examples';
   import { diagnosticText, showSym, stateName } from './lib/format';
   import { t } from './i18n';
   import GraphEditor from './graph/GraphEditor.svelte';
@@ -11,11 +11,14 @@
   import SimDeck from './sim/SimDeck.svelte';
   import BatchPanel from './sim/BatchPanel.svelte';
   import Menu from './ui/Menu.svelte';
+  import Library from './ui/Library.svelte';
   import RegexView from './expr/RegexView.svelte';
   import GrammarView from './expr/GrammarView.svelte';
   import EgrepView from './expr/EgrepView.svelte';
   import ExprDeck from './expr/ExprDeck.svelte';
   import ProcPanel from './procs/ProcPanel.svelte';
+  import LangPanel from './explore/LangPanel.svelte';
+  import MengeView from './expr/MengeView.svelte';
   import StepStage from './procs/StepStage.svelte';
   import StepDeck from './procs/StepDeck.svelte';
   import Workspace from './workspace/Workspace.svelte';
@@ -35,16 +38,17 @@
   });
   let sideWidth = $state(440);
   let showKeys = $state(false);
+  let showLibrary = $state(false);
   let fileInput: HTMLInputElement | undefined = $state();
 
   const obj = $derived(store.obj);
   const aut = $derived(store.aut);
   /** Reiter je Objektart; Ausdruck und Grammatik haben keine Tabelle. */
   const tabs = $derived(
-    (aut ? ['table', 'text', 'batch', 'procs'] : ['text', 'batch', 'procs']) as (typeof store.panel)[],
+    (aut ? ['table', 'text', 'batch', 'lang', 'procs'] : ['text', 'batch', 'lang', 'procs']) as (typeof store.panel)[],
   );
   const panel = $derived(tabs.includes(store.panel) ? store.panel : 'text');
-  const NEW_KINDS: FormalKind[] = ['dea', 'nea', 'regex', 'grammatik', 'egrep', 'mealy', 'moore', 'nka', 'tm'];
+  const NEW_KINDS: FormalKind[] = ['dea', 'nea', 'regex', 'grammatik', 'menge', 'egrep', 'mealy', 'moore', 'nka', 'tm'];
   const gtype = $derived(obj?.kind === 'grammatik' ? grammarType(obj) : null);
 
   $effect(() => {
@@ -122,6 +126,31 @@
   function addTrap(): void {
     store.update((o) => (o.kind === 'dea' ? edit.addTrapState(o).obj : o));
     requestAnimationFrame(() => graph?.layout());
+  }
+
+  // ---------------------------------------------------------------------------
+  // Export (5.3): SVG/PNG aus dem Diagramm, TikZ und LaTeX aus dem Kern
+
+  let exportDark = $state(false);
+
+  async function exportObject(what: 'svg' | 'png' | 'tikz' | 'tikzCopy' | 'table' | 'latex'): Promise<void> {
+    const o = store.obj;
+    if (!o) return;
+    try {
+      if (what === 'svg' || what === 'png') {
+        const g = graph?.exportContent();
+        if (!g) return;
+        const svgText = standaloneSvg(g, { theme: exportDark ? 'current' : 'light' });
+        if (what === 'svg') downloadBlob(`${o.name}.svg`, new Blob([svgText], { type: 'image/svg+xml' }));
+        else downloadBlob(`${o.name}.png`, await svgToPng(svgText, 2));
+        return;
+      }
+      const text = what === 'tikz' || what === 'tikzCopy' ? (aut ? toTikz(aut, { standalone: what === 'tikz' }) : '') : what === 'table' ? (aut ? toLatexTable(aut) : '') : toLatex(o);
+      if (what === 'tikz') downloadBlob(`${o.name}.tex`, new Blob([text], { type: 'text/x-tex' }));
+      else store.notify((await copyText(text)) ? t('export.copied') : t('menu.shareFailed'));
+    } catch (e) {
+      store.notify(e instanceof Error ? e.message : String(e), 'error');
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -207,12 +236,7 @@
           <button class="item" onclick={() => (store.addObject(k), close())}>{t(`menu.new.${k}`)}</button>
         {/each}
         <hr />
-        <p class="menu-head">Beispiele</p>
-        {#each examples as ex (ex.id)}
-          <button class="item" onclick={() => (store.loadExample(ex.id), close())}>
-            <span class="ref">{ex.ref || '·'}</span>{ex.title}
-          </button>
-        {/each}
+        <button class="item" onclick={() => ((showLibrary = true), close())}>{t('library.title')} …</button>
       {/snippet}
     </Menu>
 
@@ -269,7 +293,7 @@
     {#if procs.session}
       <StepStage />
     {:else if obj && !aut}
-      {#if obj.kind === 'regex'}<RegexView />{:else if obj.kind === 'egrep'}<EgrepView />{:else}<GrammarView />{/if}
+      {#if obj.kind === 'regex'}<RegexView />{:else if obj.kind === 'egrep'}<EgrepView />{:else if obj.kind === 'menge'}<MengeView />{:else}<GrammarView />{/if}
     {:else if aut}
       <GraphEditor bind:this={graph} {highlight} />
 
@@ -307,6 +331,17 @@
           {#snippet label()}<span class="kind-long">{t(`kind.${obj.kind}.long`)}</span>{/snippet}
           {#snippet children(close)}
             <button class="item" onclick={() => (renameObject(), close())}>{t('menu.rename')}</button>
+            <hr />
+            <p class="menu-head">{t('export.title')}</p>
+            {#if aut}
+              <button class="item" onclick={() => (exportObject('svg'), close())}>{t('export.svg')}</button>
+              <button class="item" onclick={() => (exportObject('png'), close())}>{t('export.png')}</button>
+              <label class="item check"><input type="checkbox" bind:checked={exportDark} /> {t('export.dark')}</label>
+              <button class="item" onclick={() => (exportObject('tikz'), close())}>{t('export.tikz')}</button>
+              <button class="item" onclick={() => (exportObject('tikzCopy'), close())}>{t('export.tikzCopy')}</button>
+              <button class="item" onclick={() => (exportObject('table'), close())}>{t('export.table')}</button>
+            {/if}
+            <button class="item" onclick={() => (exportObject('latex'), close())}>{t('export.latex')}</button>
             {#if obj.kind === 'dea' || obj.kind === 'nea'}
               <button class="item" onclick={() => (convert(), close())}>{t(obj.kind === 'dea' ? 'menu.convert.nea' : 'menu.convert.dea')}</button>
             {/if}
@@ -328,7 +363,7 @@
         <div class="row">
           <button class="btn primary" onclick={() => store.addObject('dea')}>{t('menu.new.dea')}</button>
           <button class="btn" onclick={() => store.addObject('nea')}>{t('menu.new.nea')}</button>
-          <button class="btn" onclick={() => store.loadExample('b2-3')}>Beispiel 2.3</button>
+          <button class="btn" onclick={() => (showLibrary = true)}>{t('library.title')}</button>
         </div>
       </div>
     {/if}
@@ -341,7 +376,12 @@
       <section class="definition" aria-label={t('panel.definition')}>
         <p class="tuple math">{t(`def.${obj.kind}`)}</p>
         <dl class="math">
-          {#if obj.kind === 'egrep'}
+          {#if obj.kind === 'menge'}
+            <dt>A</dt>
+            <dd class="mono-set">{set(obj.alphabet.map(showSym))}</dd>
+            <dt>|L|</dt>
+            <dd>{obj.words.length}{#if obj.upTo !== undefined} ({t('menge.upTo', { n: obj.upTo })}){/if}</dd>
+          {:else if obj.kind === 'egrep'}
             <dt>A</dt>
             <dd class="mono-set">{obj.alphabet.length ? set(obj.alphabet.map(showSym)) : t('egrep.alphabetAuto')}</dd>
           {:else if obj.kind === 'regex'}
@@ -437,6 +477,8 @@
           <TextEditor />
         {:else if panel === 'procs'}
           <ProcPanel />
+        {:else if panel === 'lang'}
+          <LangPanel />
         {:else}
           <BatchPanel />
         {/if}
@@ -469,6 +511,8 @@
       <div class="toast {store.toast.tone}" role="status">{store.toast.text}</div>
     {/key}
   {/if}
+
+  {#if showLibrary}<Library onclose={() => (showLibrary = false)} />{/if}
 
   {#if showKeys}
     <div class="scrim" role="presentation" onclick={() => (showKeys = false)}>

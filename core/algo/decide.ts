@@ -3,6 +3,7 @@ import type {
   DEA,
   EquivalenceResult,
   FormalObject,
+  MengeObj,
   NEA,
   ProcOptions,
   ProcResult,
@@ -17,6 +18,30 @@ import { grammarToNeaCore, type3Violations } from './grammarops';
 import { thompsonCore } from './regexalgo';
 import { egrepAlphabet, egrepAsRegex, egrepTest } from './egrep';
 import { egrepHasBackref, parseEgrep } from '../model/egrep';
+
+/** Präfixbaum als NEA (ohne Fangzustand; der DEA-Bau ergänzt ihn). */
+function mengeAsNea(o: MengeObj): NEA {
+  const states: NEA['states'] = [{ id: 's0', name: 'q0' }];
+  const transitions: NEA['transitions'] = [];
+  const children = new Map<string, string>();
+  const accept = new Set<string>();
+  for (const w of o.words) {
+    let cur = 's0';
+    for (const x of w) {
+      const k = `${cur}\u0000${x}`;
+      let nx = children.get(k);
+      if (nx === undefined) {
+        nx = `s${states.length}`;
+        states.push({ id: nx, name: `q${states.length}` });
+        transitions.push({ id: `t${transitions.length}`, from: cur, to: nx, label: [x] });
+        children.set(k, nx);
+      }
+      cur = nx;
+    }
+    accept.add(cur);
+  }
+  return { kind: 'nea', name: o.name, alphabet: o.alphabet, states, start: 's0', accept: [...accept], transitions };
+}
 
 /** Typ-3-Objekt → NEA (ohne Schritte); null bei falscher Art oder Fehler. */
 function asNea(o: FormalObject): NEA | null {
@@ -34,6 +59,8 @@ function asNea(o: FormalObject): NEA | null {
         const r = egrepAsRegex(o);
         return r === null || r.expr === null ? null : thompsonCore(r, rec, { limits: { maxStates: 100000 } });
       }
+      case 'menge':
+        return mengeAsNea(o);
       case 'grammatik':
         if (o.start === null || type3Violations(o).length > 0) return null;
         return grammarToNeaCore(o, rec, undefined).nea;
@@ -97,8 +124,8 @@ export function accepts(o: FormalObject, w: Word): boolean | null {
 export function equivalent(a: FormalObject, b: FormalObject, opts: ProcOptions = {}): ProcResult<EquivalenceResult> {
   const rec = newRec(opts);
   return guard(rec, () => {
-    need('equivalent', a, ['dea', 'nea', 'regex', 'grammatik', 'egrep']);
-    need('equivalent', b, ['dea', 'nea', 'regex', 'grammatik', 'egrep']);
+    need('equivalent', a, ['dea', 'nea', 'regex', 'grammatik', 'egrep', 'menge']);
+    need('equivalent', b, ['dea', 'nea', 'regex', 'grammatik', 'egrep', 'menge']);
     for (const o of [a, b]) {
       if (o.kind === 'egrep') {
         const ast = parseEgrep(o.pattern).ast;

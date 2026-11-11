@@ -1,0 +1,12 @@
+# Skript 2.38: Grammatik für Gleitkommazahlen (mit Nichtterminalnamen)
+grammatik B2_38 {
+  nichtterminale Xz Xm Xv Xn Xe Xb
+  terminale 0 1 - . E
+  start Xz
+  Xz -> XmXvXnXe
+  Xm -> - | ε
+  Xv -> Xb
+  Xn -> .Xb | ε
+  Xe -> EXmXb | ε
+  Xb -> 0Xb | 1Xb | 0 | 1
+}
