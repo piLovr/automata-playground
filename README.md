@@ -1,6 +1,6 @@
 # Automaten-Playground
 
-Browser-Tool für formale Sprachen und Automaten. Stand: Meilenstein M1 (DEA und NEA).
+Browser-Tool für formale Sprachen und Automaten. Stand: Meilenstein M2 (reguläre Ausdrücke, Typ-3-Grammatiken, Verfahren aus 7.1, Arbeitsfläche) und egrep-Regex.
 
 ## Befehle
 
@@ -120,3 +120,29 @@ Weitere Beispiele liegen in `examples/`.
 - `app/` – Svelte-Oberfläche (`main.ts`, `App.svelte`, `i18n/`)
 - `examples/` – Beispieldateien in der Textsprache
 - `docs/` – Pläne und Notizen
+
+## Docker und Portainer
+
+Bei jedem Push auf `main` baut GitHub Actions (`.github/workflows/docker.yml`) nach Tests,
+Typprüfung und Lint ein Image für `linux/amd64` und `linux/arm64` und legt es unter
+`ghcr.io/pilovr/automata-playground` ab (`latest`, Kurz-SHA, bei Tags `v*` auch die
+Versionsnummer). Das Image liefert die statische Seite mit nginx auf Port 80 aus.
+
+Stack für Portainer (auch als `docker-compose.yml` im Repository):
+
+```yaml
+services:
+  automaten-playground:
+    image: ghcr.io/pilovr/automata-playground:latest
+    container_name: automaten-playground
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+```
+
+Lokal bauen und starten:
+
+```sh
+docker build -t automaten-playground .
+docker run --rm -p 8080:80 automaten-playground
+```

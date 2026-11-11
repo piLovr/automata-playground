@@ -1,0 +1,8 @@
+# Stack für Portainer: Image aus der GitHub Container Registry, Port 8080 auf dem Host.
+services:
+  automaten-playground:
+    image: ghcr.io/pilovr/automata-playground:latest
+    container_name: automaten-playground
+    restart: unless-stopped
+    ports:
+      - "8080:80"
