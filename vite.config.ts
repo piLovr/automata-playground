@@ -9,5 +9,7 @@ export default defineConfig({
   test: {
     include: ['core/**/*.test.ts', 'app/**/*.test.ts'],
     environment: 'node',
+    // Eigenschaftstests (100–150 Zufallsfälle) brauchen lokal ~2 s; auf CI-Runnern Luft lassen.
+    testTimeout: 30000,
   },
 });

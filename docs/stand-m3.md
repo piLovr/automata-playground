@@ -72,3 +72,23 @@ Plan: `docs/plan-m3.md`, Kernspezifikation: `docs/kern-spec-m3.md`, Skriptnotize
   App kommen im Bild nur an, wenn sie dort installiert sind.
 - Der Sprachrechner hat noch keinen eigenen Schrittspieler. Die Schritte liefert der Kern
   bereits (`proc.lang.*`).
+
+## Nachtrag: Brücken zwischen den Darstellungen
+
+- **Menge → DEA** (Präfixbaum, nicht im Skript): ein Zustand je Präfix, Start ε, dazu der
+  Fangzustand ∅, damit das Ergebnis vollständig ist und sich minimieren lässt. Sofort und
+  schrittweise (ein Schritt je Wort).
+- **Kette bis zum minimalen DEA**: Der Reiter „Verfahren“ zeigt den Weg vom aktiven Objekt
+  und erzeugt mit einem Klick alle Zwischenobjekte mit Herkunft. Danach öffnet sich die
+  Arbeitsfläche.
+  - Für egrep, regulären Ausdruck, Typ-3-Grammatik, NEA, DEA und Menge.
+  - Bei Ausdrücken wahlweise über Thompson.
+  - Ein unvollständiger DEA bekommt den Hinweis auf den Fangzustand.
+  - Beispiel 3.23: B3_23 → R1 → G1 → N1 → M1 → M1min.
+- **Absicherung**:
+  - Der Kettentest prüft für 40 zufällige Ausdrücke (mit und ohne Thompson) und alle
+    Typ-3-Beispiele der Kapitel 1–3 Äquivalenz zur Quelle und Minimalität.
+  - Die Testzeitgrenze ist auf 30 s gesetzt, weil die Eigenschaftstests auf CI-Runnern sonst
+    knapp würden.
+- **Behoben**: egrep `[0-9]` fror die Seite ein. Die Wortprobe unten lief im Hauptthread
+  über die Mengen-Semantik; jetzt läuft sie im Worker über den DEA.

@@ -6,6 +6,8 @@ export const EXPLANATION_KEYS = [
   'proc.eps.f',
   'proc.eps.r3',
   'proc.pow.row',
+  'proc.trie.word',
+  'proc.trie.trap',
   'proc.phase',
   'proc.phase.skip',
   'proc.lk.order',

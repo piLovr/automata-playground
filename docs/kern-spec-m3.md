@@ -116,3 +116,43 @@ export function toLatex(o: FormalObject): string;            // regex/grammatik/
   Automaten 2.10 ist 1 genau dann, wenn das Wort eine Dualzahl (mit optionalem Vorzeichen)
   nach 2.3 ist (= von DEA 2.3 akzeptiert).
 - Export: Struktur statt Wortlaut prüfen (Anzahl `\node`, `initial`, `accepting`, Kanten).
+
+---
+
+## Nachtrag: Brücken (Menge → DEA, Kette bis zum minimalen DEA)
+
+### `mengeToDea(m: MengeObj, opts?: ProcOptions): ProcResult<DEA>` (MethodId `menge2dea`)
+
+- Präfixbaum (nicht im Skript, so kennzeichnen): ein Zustand je Präfix eines Worts der Menge
+  in Längen-/Alphabetordnung, Start = ε, F = Präfixe, die Wörter der Menge sind; danach ein
+  Fangzustand für alle fehlenden (z, x), damit das Ergebnis vollständig ist (Minimierung,
+  Komplement). Leere Menge: nur Start (nicht akzeptierend) mit Schleifen. Alphabet = Alphabet
+  der Menge.
+- Zustandsnamen: das Präfix als Wort (ε heißt `ε`), falls als Zustandsname gültig
+  (`isStateName`), sonst `q<k>`; mit `compactNames` wie bei der Potenzmenge; Fangzustand
+  `∅` bzw. frisch.
+- `upTo` gesetzt: trotzdem die endliche Menge (wie `toDea`), Diagnose als Warnung
+  `lang.truncated` {upTo} in den Schritten ist nicht nötig – die Oberfläche weist hin.
+- Schritte: je Wort `proc.trie.word` {word, newStates: StateId[]} mit view.obj (Baum bisher,
+  neue Kanten in `added`), dann `proc.trie.trap` {state, count} (Anzahl ergänzter Übergänge).
+- corr: keine (die Zustände sind die Präfixe selbst).
+- `applicableMethods(menge)` → `['menge2dea']`; `runMethod` verteilt.
+
+### `chainPlan(o: FormalObject, opts?: { thompson?: boolean }): MethodId[] | null`
+
+Reine Hilfsfunktion: die Verfahren, die nacheinander aus `o` einen minimalen DEA machen
+(jedes Verfahren auf das Ergebnis des vorigen):
+
+| Art | Plan |
+|---|---|
+| egrep (ohne Rückwärtsverweis) | egrep2regex, regex2grammar, grammar2nea, nea2dea, minimize |
+| regex | regex2grammar, grammar2nea, nea2dea, minimize (mit `thompson`: thompson, nea2dea, minimize) |
+| grammatik Typ 3 | grammar2nea, nea2dea, minimize |
+| nea | nea2dea, minimize |
+| dea | minimize; ist er unvollständig: null (die Oberfläche bietet den Fangzustand an) |
+| menge | menge2dea, minimize |
+| sonst (oder egrep mit Rückwärtsverweis, Grammatik Typ < 3) | null |
+
+Test: Für zufällige Ausdrücke und alle Typ-3-Beispiele aus `examples/` führt die Kette per
+`runMethod` ohne Fehler zu einem DEA, der `equivalent` zur Quelle ist und unter erneutem
+`minimize` gleich viele Zustände behält.

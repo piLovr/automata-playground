@@ -1,7 +1,7 @@
 <script lang="ts">
   // Reiter „Verfahren“: alle passenden Verfahren aus 7.1, sofort oder schrittweise,
   // dazu Äquivalenztest, trennendes Wort und Herkunft des aktiven Objekts.
-  import { applicableMethods, grammarType, type FormalObject, type MethodId } from '../../core/index';
+  import { applicableMethods, chainPlan, grammarType, type FormalObject, type MethodId } from '../../core/index';
   import { store } from '../lib/store.svelte';
   import { procs } from '../lib/procs.svelte';
   import { runner } from '../lib/runner.svelte';
@@ -26,6 +26,22 @@
   let w2 = $state('');
 
   const origin = $derived(obj?.origin);
+
+  // Kette bis zum minimalen DEA
+  let viaThompson = $state(false);
+  const canThompson = $derived(obj?.kind === 'regex' || obj?.kind === 'egrep');
+  const plan = $derived(obj ? chainPlan(obj, { thompson: viaThompson && canThompson }) : null);
+  const incompleteDea = $derived(obj?.kind === 'dea' && plan === null);
+  /** Was jeder Kettenschritt erzeugt (die Verfahrensnamen enthalten selbst Pfeile). */
+  const RESULT_OF: Partial<Record<MethodId, string>> = {
+    egrep2regex: 'kind.regex',
+    regex2grammar: 'kind.grammatik',
+    grammar2nea: 'kind.nea',
+    thompson: 'kind.nea',
+    nea2dea: 'kind.dea',
+    menge2dea: 'kind.dea',
+    minimize: 'proc.chainMin',
+  };
   const stale = $derived(obj ? procs.stale(obj) : false);
 
   function sourcesFor(m: MethodId): FormalObject[] | null {
@@ -69,6 +85,26 @@
       </p>
       {#if stale}
         <button class="btn" onclick={() => procs.recompute(obj.name)} disabled={!!runner.busy}>{t('proc.recompute')}</button>
+      {/if}
+    </section>
+  {/if}
+
+  {#if obj && (plan || incompleteDea)}
+    <section class="chain">
+      <p class="eyebrow">{t('proc.chainTitle')}</p>
+      {#if plan}
+        <p class="steps">
+          <span class="node">{obj.name}</span>
+          {#each plan as m, i (i)}<span class="arrow">→</span><span class="node" class:on={procs.chain?.step === i + 1} title={t(`method.${m}`)}>{t(RESULT_OF[m] ?? `method.${m}`)}</span>{/each}
+        </p>
+        <div class="row">
+          <button class="btn primary" onclick={() => procs.runChain(obj, plan)} disabled={!!runner.busy}>{t('proc.chainRun')}</button>
+          {#if canThompson}
+            <label class="check small"><input type="checkbox" bind:checked={viaThompson} /> {t('proc.chainThompson')}</label>
+          {/if}
+        </div>
+      {:else}
+        <p class="note">{t('proc.chainIncomplete')}</p>
       {/if}
     </section>
   {/if}
@@ -222,6 +258,41 @@
     .spinner {
       animation: none;
     }
+  }
+  .chain {
+    padding: 12px;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--sheet);
+  }
+  .steps {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    font-size: 12.5px;
+  }
+  .steps .node {
+    padding: 2px 8px;
+    border: 1px solid var(--rule-2);
+    border-radius: 999px;
+    background: var(--paper);
+  }
+  .steps .node.on {
+    border-color: var(--signal);
+    background: var(--signal-soft);
+    font-weight: 600;
+  }
+  .steps .arrow {
+    color: var(--ink-3);
+  }
+  .check.small {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--ink-2);
   }
   .origin {
     padding: 10px 12px;

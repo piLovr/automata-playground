@@ -9,3 +9,4 @@ export { toDea, accepts, equivalent, separatingWord } from './decide';
 export { enumerate } from './enumerate';
 export { egrepFirst, egrepAll, egrepTest, egrepToRegex } from './egrep';
 export { applicableMethods, runMethod } from './methods';
+export { mengeToDea, chainPlan } from './bridges';

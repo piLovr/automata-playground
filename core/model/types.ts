@@ -226,7 +226,8 @@ export type MethodId =
   | 'mealy2moore' // nicht im Skript
   | 'moore2mealy' // nicht im Skript
   | 'egrep2regex' // 7.4: Regex (Kap. 3) → regulärer Ausdruck (Kap. 2)
-  | 'sprachop'; // Sprachrechner (1.6–1.9): Ergebnis eines Ausdrucks über Mengen
+  | 'sprachop' // Sprachrechner (1.6–1.9): Ergebnis eines Ausdrucks über Mengen
+  | 'menge2dea'; // endliche Sprache → DEA über den Präfixbaum (nicht im Skript)
 
 /** Verweis auf ein Element eines Objekts (Hervorhebung, Entsprechungen). */
 export type ElemRef =

@@ -6,6 +6,7 @@ import { complement, minimize, product, reachable } from './deaops';
 import { deaToRegex, deaToRegexElim, regexToGrammar, thompson } from './regexalgo';
 import { deaToGrammar, grammarToNea, type3Violations } from './grammarops';
 import { egrepToRegex } from './egrep';
+import { mengeToDea } from './bridges';
 import { mealyToMoore, mooreToMealy } from './mealymoore';
 
 export function applicableMethods(o: FormalObject): MethodId[] {
@@ -20,6 +21,8 @@ export function applicableMethods(o: FormalObject): MethodId[] {
       return type3Violations(o).length === 0 ? ['grammar2nea'] : [];
     case 'egrep':
       return ['egrep2regex'];
+    case 'menge':
+      return ['menge2dea'];
     case 'mealy':
       return ['mealy2moore'];
     case 'moore':
@@ -73,6 +76,8 @@ export function runMethod(method: MethodId, sources: FormalObject[], opts: ProcO
       return wrong(a.kind); // nur über evalLang
     case 'egrep2regex':
       return a.kind === 'egrep' ? egrepToRegex(a, opts) : wrong(a.kind);
+    case 'menge2dea':
+      return a.kind === 'menge' ? mengeToDea(a, opts) : wrong(a.kind);
     case 'mealy2moore':
       return a.kind === 'mealy' ? mealyToMoore(a, opts) : wrong(a.kind);
     case 'moore2mealy':

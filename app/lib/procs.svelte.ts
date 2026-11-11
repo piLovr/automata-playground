@@ -60,6 +60,7 @@ class Procs {
     if (s) return names.includes(src.name + s) ? freshName(names, src.name + s + '_') : src.name + s;
     const prefix: Record<MethodId, string> = {
       nea2dea: 'M',
+      menge2dea: 'M',
       powerset: 'M',
       splitWords: 'N',
       removeEpsilon: 'N',
@@ -137,6 +138,44 @@ class Procs {
   close(): void {
     this.session = null;
     this.playing = false;
+  }
+
+  /** Laufende Kette: Schritt i von n (Anzeige im Verfahrensreiter). */
+  chain = $state<{ step: number; total: number; method: MethodId } | null>(null);
+
+  /**
+   * Führt die Verfahren nacheinander aus, bis ein minimaler DEA entsteht. Jedes
+   * Zwischenergebnis wird ein Objekt mit Herkunft; am Ende zeigt die Arbeitsfläche die Kette.
+   */
+  async runChain(src: FormalObject, plan: MethodId[]): Promise<void> {
+    let cur = src;
+    const made: string[] = [];
+    try {
+      for (let i = 0; i < plan.length; i++) {
+        const method = plan[i]!;
+        this.chain = { step: i + 1, total: plan.length, method };
+        const out = await runner.run<ProcResult<FormalObject>>(t('proc.chainStep', { i: i + 1, n: plan.length, method: t(`method.${method}`) }), {
+          fn: 'runMethod',
+          method,
+          sources: [cur],
+          opts: { ...this.#opts(false), name: this.#nameFor(method, cur) },
+        });
+        if (out.status === 'cancelled') return store.notify(t('proc.cancelled'));
+        if (out.status === 'error') return store.notify(out.message, 'error');
+        if (!out.value.ok) return store.notify(`${t(`method.${method}`)}: ${this.#failure(out.value)}`, 'error');
+        const name = store.insertObject(out.value.result, { activate: false });
+        made.push(name);
+        cur = store.doc.objects.find((o) => o.name === name)!;
+      }
+    } finally {
+      this.chain = null;
+    }
+    const last = made.at(-1);
+    if (last) {
+      store.setActive(store.doc.objects.findIndex((o) => o.name === last));
+      store.setView('workspace');
+      store.notify(t('proc.chainDone', { names: made.join(' → ') }));
+    }
   }
 
   /** Veraltetes Objekt mit seinem Verfahren aus den aktuellen Quellen neu berechnen. */

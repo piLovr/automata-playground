@@ -30,11 +30,13 @@ export const METHODS: Record<MethodId, MethodInfo> = {
   moore2mealy: { ref: '' },
   egrep2regex: { ref: '3.25, 7.4' },
   sprachop: { ref: '1.6–1.9' },
+  menge2dea: { ref: '' },
 };
 
 /** Reihenfolge im Verfahrensreiter. */
 export const METHOD_ORDER: MethodId[] = [
   'nea2dea',
+  'menge2dea',
   'splitWords',
   'removeEpsilon',
   'powerset',

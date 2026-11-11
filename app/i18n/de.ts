@@ -375,6 +375,8 @@ export const de = {
 
   // Verfahren
   'method.nea2dea': 'NEA → DEA',
+  'method.menge2dea': 'Menge → DEA (Präfixbaum)',
+  'method.menge2dea.desc': 'Ein Zustand je Präfix der Wörter, Fangzustand für alle fehlenden Übergänge (nicht im Skript)',
   'method.nea2dea.desc': 'Wortübergänge zerlegen, ε-Übergänge entfernen, Potenzmengenkonstruktion',
   'method.splitWords': 'Wortübergänge zerlegen',
   'method.splitWords.desc': 'Jeder Übergang liest danach höchstens ein Symbol',
@@ -410,6 +412,13 @@ export const de = {
   'method.moore2mealy.desc': 'Ausgabe des Zielzustands wandert an die Kante',
 
   'proc.methods': 'Umwandlungen und Verfahren',
+  'proc.chainTitle': 'Kette bis zum minimalen DEA',
+  'proc.chainRun': 'Ganze Kette erzeugen',
+  'proc.chainMin': 'minimaler DEA',
+  'proc.chainThompson': 'Abkürzung über Thompson (nicht im Skript)',
+  'proc.chainIncomplete': 'Der DEA ist nicht vollständig. Erst den Fangzustand ergänzen (Hinweis unten), dann lässt er sich minimieren.',
+  'proc.chainStep': 'Kette {i}/{n}: {method}',
+  'proc.chainDone': 'Kette erzeugt: {names}',
   'proc.none': 'Für diese Objektart gibt es noch keine Verfahren.',
   'proc.notInScript': 'nicht im Skript',
   'proc.supplement': 'Ergänzung',
@@ -464,6 +473,8 @@ export const de = {
   'explain.proc.eps.r2': 'R2: Wegen {via} und {eps} kommt {added} hinzu.',
   'explain.proc.eps.f': 'F-Regel: {eps} führt in einen Endzustand, also wird {state} Endzustand.',
   'explain.proc.eps.r3': 'R3: R1, R2 und F-Regel ergeben nichts Neues mehr; alle ε-Übergänge werden entfernt.',
+  'explain.proc.trie.word': 'Das Wort {word} wird in den Präfixbaum eingefügt; neue Zustände: {newStates}.',
+  'explain.proc.trie.trap': 'Alle fehlenden Übergänge führen in den Fangzustand {state} ({count} Übergänge ergänzt); so ist der Automat vollständig.',
   'explain.proc.pow.row': 'Teilmenge {set}: Nachfolger je Symbol {targets}.',
   'explain.proc.lk.order': 'Der Startzustand bekommt Index 0; Reihenfolge {order}.',
   'explain.proc.lk.base': 'k = 0: L⁰_ij enthält die Symbole, die direkt von z_i nach z_j führen; auf der Diagonale zusätzlich ε (geschrieben ∅*).',
